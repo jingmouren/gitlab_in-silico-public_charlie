@@ -1,11 +1,14 @@
 use std::collections::HashSet;
 use std::hash::{Hash, Hasher};
+use serde::{Serialize, Deserialize};
+
 use crate::scenario::Scenario;
 
 /// Tolerance when validating that all probabilities across scenarios sum up to 1
 const PROBABILITY_TOLERANCE: f64 = 1e-10;
 
 /// A company with some basic information relevant for investment and a set of possible scenarios
+#[derive(Serialize, Deserialize, Debug)]
 pub struct Company {
     name: String,
     ticker: String,
@@ -25,8 +28,7 @@ impl PartialEq<Self> for Company {
 
 impl Eq for Company {}
 
-/// Hash key based on the ticker symbol (hash keys of two objects must be equal if they evaluate to
-/// being equal using PartialEq)
+/// Hash key based on the ticker symbol
 impl Hash for Company {
     fn hash<H: Hasher>(&self, hasher: &mut H) {
         self.ticker.hash(hasher)
@@ -40,8 +42,13 @@ impl Company {
         ticker: String,
         description: String,
         market_cap: f64,
-        scenarios: HashSet<Scenario>,
+        scenarios: Vec<Scenario>,
     ) -> Company {
+        // Fail if we have duplicate scenarios
+        if scenarios.len() != HashSet::from_iter(scenarios).len() {
+            panic!("Having scenarios with the same thesis is not allowed. Scenarios are: {:?}", scenarios.map(|scenario| ", {}", scenario.thesis))
+        }
+
         let company = Company {
             name,
             ticker,
@@ -57,6 +64,7 @@ impl Company {
 
     /// Does all validations. Used after construction
     fn validate(&self) {
+        self.validate_all_scenarios_unique();
         self.validate_at_least_one_scenario();
         self.validate_probabilities_sum_up_to_one();
     }
@@ -82,3 +90,12 @@ impl Company {
     }
 }
 
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_probability_tolerance_doesnt_change() {
+        assert_eq!(PROBABILITY_TOLERANCE, 1e-10)
+    }
+}
