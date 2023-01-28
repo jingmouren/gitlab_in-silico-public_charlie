@@ -1,6 +1,5 @@
 use std::hash::{Hash, Hasher};
 
-#[derive(Eq)]
 pub struct Scenario {
     thesis: String,
     intrinsic_value: f64,
@@ -13,6 +12,8 @@ impl PartialEq<Self> for Scenario {
         self.thesis == other.thesis
     }
 }
+
+impl Eq for Scenario {}
 
 /// Hash key based on the thesis (hash keys of two objects must be equal if they evaluate to
 /// being equal using PartialEq)

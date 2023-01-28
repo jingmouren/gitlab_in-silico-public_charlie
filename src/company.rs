@@ -1,13 +1,11 @@
 use std::collections::HashSet;
 use std::hash::{Hash, Hasher};
-use std::intrinsics::fabsf64;
 use crate::scenario::Scenario;
 
 /// Tolerance when validating that all probabilities across scenarios sum up to 1
 const PROBABILITY_TOLERANCE: f64 = 1e-10;
 
 /// A company with some basic information relevant for investment and a set of possible scenarios
-#[derive(Eq)]
 pub struct Company {
     name: String,
     ticker: String,
@@ -24,6 +22,8 @@ impl PartialEq<Self> for Company {
         self.ticker == other.ticker
     }
 }
+
+impl Eq for Company {}
 
 /// Hash key based on the ticker symbol (hash keys of two objects must be equal if they evaluate to
 /// being equal using PartialEq)
@@ -76,7 +76,7 @@ impl Company {
     /// TODO: Convert panics to recoverable errors that can be handled
     fn validate_probabilities_sum_up_to_one(&self) {
         let sum: f64 = self.scenarios.iter().map(|scenario| scenario.probability).sum();
-        if (sum - 1).abs() < PROBABILITY_TOLERANCE {
+        if (sum - 1.0).abs() < PROBABILITY_TOLERANCE {
             panic!("Probabilities of all scenarios do not sum up to 1. Sum = {}.", sum)
         }
     }

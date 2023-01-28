@@ -1,7 +1,5 @@
-mod portfolio;
-mod scenario;
-mod company;
+use portfolio::public_interface_function;
 
 fn main() {
-    println!("Hello, world!");
+    public_interface_function();
 }
