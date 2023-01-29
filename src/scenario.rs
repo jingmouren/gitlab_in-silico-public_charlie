@@ -1,5 +1,5 @@
+use serde::{Deserialize, Serialize};
 use std::hash::{Hash, Hasher};
-use serde::{Serialize, Deserialize};
 
 /// A scenario is represented by an investment thesis, which can be boiled down to the expected
 /// intrinsic value and the estimated probability that this scenario will play out in the future
@@ -37,11 +37,17 @@ impl Scenario {
     /// TODO: Convert panics to recoverable errors that can be handled
     fn validate_probability_bounds(&self) {
         if self.probability < 0.0 {
-            panic!("Negative probability is not allowed. Probability: {}", self.probability)
+            panic!(
+                "Negative probability is not allowed. Probability: {}",
+                self.probability
+            )
         }
 
         if self.probability > 1.0 {
-            panic!("Probability greater than 1 is not allowed. Probability: {}", self.probability)
+            panic!(
+                "Probability greater than 1 is not allowed. Probability: {}",
+                self.probability
+            )
         }
     }
 
@@ -52,7 +58,8 @@ impl Scenario {
         if self.intrinsic_value < 1e5 {
             panic!(
                 "Intrinsic value of {} is smaller than 100 000. Intrinsic value represents \
-                the value of the whole business, and not value per share.", self.intrinsic_value
+                the value of the whole business, and not value per share.",
+                self.intrinsic_value
             )
         }
     }
@@ -60,8 +67,8 @@ impl Scenario {
 
 #[cfg(test)]
 mod test {
-    use std::collections::hash_map::DefaultHasher;
     use super::*;
+    use std::collections::hash_map::DefaultHasher;
 
     #[test]
     fn test_scenario_serialization() {
@@ -72,7 +79,10 @@ mod test {
         };
         let test_str = serde_yaml::to_string(&test_scenario).unwrap();
 
-        assert_eq!(test_str, "thesis: Liquidation value\nintrinsic_value: 1000000.0\nprobability: 0.6\n");
+        assert_eq!(
+            test_str,
+            "thesis: Liquidation value\nintrinsic_value: 1000000.0\nprobability: 0.6\n"
+        );
     }
 
     #[test]
@@ -152,6 +162,9 @@ mod test {
         };
 
         let mut hasher = DefaultHasher::new();
-        assert_eq!(test_scenario_1.hash(&mut hasher), test_scenario_2.hash(&mut hasher));
+        assert_eq!(
+            test_scenario_1.hash(&mut hasher),
+            test_scenario_2.hash(&mut hasher)
+        );
     }
 }

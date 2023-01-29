@@ -1,4 +1,4 @@
-use portfolio::{Candidates, create_candidates, allocate};
+use portfolio::{allocate, create_candidates, Candidates};
 
 #[test]
 fn test_create_candidates() {
@@ -39,10 +39,16 @@ fn test_create_candidates() {
 
     // Scenarios for the first company
     assert_eq!(candidates[0].scenarios.len(), 2);
-    assert_eq!(candidates[0].scenarios[0].thesis, "Worst case liquidation value");
+    assert_eq!(
+        candidates[0].scenarios[0].thesis,
+        "Worst case liquidation value"
+    );
     assert_eq!(candidates[0].scenarios[0].intrinsic_value, 2e6);
     assert_eq!(candidates[0].scenarios[0].probability, 0.6);
-    assert_eq!(candidates[0].scenarios[1].thesis, "Base case liquidation value");
+    assert_eq!(
+        candidates[0].scenarios[1].thesis,
+        "Base case liquidation value"
+    );
     assert_eq!(candidates[0].scenarios[1].intrinsic_value, 4e6);
     assert_eq!(candidates[0].scenarios[1].probability, 0.4);
 
@@ -54,10 +60,16 @@ fn test_create_candidates() {
 
     // Scenarios for the second company
     assert_eq!(candidates[1].scenarios.len(), 2);
-    assert_eq!(candidates[1].scenarios[0].thesis, "Competition kills them faster then I think");
+    assert_eq!(
+        candidates[1].scenarios[0].thesis,
+        "Competition kills them faster then I think"
+    );
     assert_eq!(candidates[1].scenarios[0].intrinsic_value, 5e6);
     assert_eq!(candidates[1].scenarios[0].probability, 0.5);
-    assert_eq!(candidates[1].scenarios[1].thesis, "They manage to capitalize on current R&D");
+    assert_eq!(
+        candidates[1].scenarios[1].thesis,
+        "They manage to capitalize on current R&D"
+    );
     assert_eq!(candidates[1].scenarios[1].intrinsic_value, 3e7);
     assert_eq!(candidates[1].scenarios[1].probability, 0.5);
 }

@@ -1,6 +1,6 @@
+use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use std::hash::{Hash, Hasher};
-use serde::{Serialize, Deserialize};
 
 use crate::scenario::Scenario;
 
@@ -46,7 +46,9 @@ impl Company {
     /// Panics if all scenarios are not unique
     /// TODO: Convert panics to recoverable errors that can be handled
     fn validate_all_scenarios_unique(&self) {
-        if self.scenarios.len() != HashSet::<Scenario>::from_iter(self.scenarios.iter().cloned()).len() {
+        if self.scenarios.len()
+            != HashSet::<Scenario>::from_iter(self.scenarios.iter().cloned()).len()
+        {
             panic!("Not all scenarios are unique (have a unique thesis). Check your input.")
         }
     }
@@ -57,7 +59,8 @@ impl Company {
         if self.scenarios.is_empty() {
             panic!(
                 "No scenarios found for {name} with ticker {ticker}.",
-                name = self.name, ticker = self.ticker
+                name = self.name,
+                ticker = self.ticker
             )
         }
     }
@@ -65,17 +68,24 @@ impl Company {
     /// Panics if all probabilities across all scenarios don't sum up close to 1
     /// TODO: Convert panics to recoverable errors that can be handled
     fn validate_probabilities_sum_up_to_one(&self) {
-        let sum: f64 = self.scenarios.iter().map(|scenario| scenario.probability).sum();
+        let sum: f64 = self
+            .scenarios
+            .iter()
+            .map(|scenario| scenario.probability)
+            .sum();
         if (sum - 1.0).abs() > PROBABILITY_TOLERANCE {
-            panic!("Probabilities of all scenarios do not sum up to 1. Sum = {}.", sum)
+            panic!(
+                "Probabilities of all scenarios do not sum up to 1. Sum = {}.",
+                sum
+            )
         }
     }
 }
 
 #[cfg(test)]
 mod test {
-    use std::collections::hash_map::DefaultHasher;
     use super::*;
+    use std::collections::hash_map::DefaultHasher;
 
     #[test]
     fn test_probability_tolerance_doesnt_change() {
@@ -127,14 +137,23 @@ mod test {
 
         assert_eq!(test_company.name, "Some company");
         assert_eq!(test_company.ticker, "SC");
-        assert_eq!(test_company.description, "Some business that's pretty interesting.");
+        assert_eq!(
+            test_company.description,
+            "Some business that's pretty interesting."
+        );
         assert_eq!(test_company.market_cap, 5e5);
 
-        assert_eq!(test_company.scenarios[0].thesis, "Worst case liquidation value");
+        assert_eq!(
+            test_company.scenarios[0].thesis,
+            "Worst case liquidation value"
+        );
         assert_eq!(test_company.scenarios[0].intrinsic_value, 1e6);
         assert_eq!(test_company.scenarios[0].probability, 0.6);
 
-        assert_eq!(test_company.scenarios[1].thesis, "Base case liquidation value");
+        assert_eq!(
+            test_company.scenarios[1].thesis,
+            "Base case liquidation value"
+        );
         assert_eq!(test_company.scenarios[1].intrinsic_value, 2e6);
         assert_eq!(test_company.scenarios[1].probability, 0.4);
     }
@@ -241,6 +260,9 @@ mod test {
         };
 
         let mut hasher = DefaultHasher::new();
-        assert_eq!(test_company_1.hash(&mut hasher), test_company_2.hash(&mut hasher));
+        assert_eq!(
+            test_company_1.hash(&mut hasher),
+            test_company_2.hash(&mut hasher)
+        );
     }
 }
