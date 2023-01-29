@@ -3,7 +3,7 @@ use serde::{Serialize, Deserialize};
 
 /// A scenario is represented by an investment thesis, which can be boiled down to the expected
 /// intrinsic value and the estimated probability that this scenario will play out in the future
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Scenario {
     pub(crate) thesis: String,
     pub(crate) intrinsic_value: f64,
@@ -140,7 +140,6 @@ mod test {
 
     #[test]
     fn two_scenarios_with_same_thesis_have_equal_hash_irrespective_of_different_intrinsic_value() {
-        let mut hasher = DefaultHasher::new();
         let test_scenario_1 = Scenario {
             thesis: "Awesome thesis".to_string(),
             intrinsic_value: 1.2e7,
@@ -151,6 +150,8 @@ mod test {
             intrinsic_value: 1.2e8,
             probability: 0.4,
         };
+
+        let mut hasher = DefaultHasher::new();
         assert_eq!(test_scenario_1.hash(&mut hasher), test_scenario_2.hash(&mut hasher));
     }
 }

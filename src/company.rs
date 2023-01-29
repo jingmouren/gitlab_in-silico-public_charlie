@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::hash::{Hash, Hasher};
 use serde::{Serialize, Deserialize};
 
@@ -36,16 +37,16 @@ impl Hash for Company {
 
 impl Company {
     /// Does all validations. Used after construction
-    fn validate(&self) {
-        self.validate_all_scenarios_unique();
+    pub fn validate(&self) {
         self.validate_at_least_one_scenario();
+        self.validate_all_scenarios_unique();
         self.validate_probabilities_sum_up_to_one();
     }
 
     /// Panics if all scenarios are not unique
     /// TODO: Convert panics to recoverable errors that can be handled
     fn validate_all_scenarios_unique(&self) {
-        if self.scenarios.len() != self.scenarios.iter().clone().collect::<Vec<_>>().len() {
+        if self.scenarios.len() != HashSet::<Scenario>::from_iter(self.scenarios.iter().cloned()).len() {
             panic!("Not all scenarios are unique (have a unique thesis). Check your input.")
         }
     }
@@ -65,7 +66,7 @@ impl Company {
     /// TODO: Convert panics to recoverable errors that can be handled
     fn validate_probabilities_sum_up_to_one(&self) {
         let sum: f64 = self.scenarios.iter().map(|scenario| scenario.probability).sum();
-        if (sum - 1.0).abs() < PROBABILITY_TOLERANCE {
+        if (sum - 1.0).abs() > PROBABILITY_TOLERANCE {
             panic!("Probabilities of all scenarios do not sum up to 1. Sum = {}.", sum)
         }
     }
@@ -73,6 +74,7 @@ impl Company {
 
 #[cfg(test)]
 mod test {
+    use std::collections::hash_map::DefaultHasher;
     use super::*;
 
     #[test]
@@ -135,5 +137,110 @@ mod test {
         assert_eq!(test_company.scenarios[1].thesis, "Base case liquidation value");
         assert_eq!(test_company.scenarios[1].intrinsic_value, 2e6);
         assert_eq!(test_company.scenarios[1].probability, 0.4);
+    }
+
+    #[test]
+    #[should_panic(expected = "No scenarios found for Some Company with ticker SC.")]
+    fn test_having_non_unique_scenarios_panics() {
+        let test_company: Company = Company {
+            name: "Some Company".to_string(),
+            ticker: "SC".to_string(),
+            description: "Some business that's pretty interesting.".to_string(),
+            market_cap: 5e5,
+            scenarios: vec![],
+        };
+
+        test_company.validate();
+    }
+
+    #[test]
+    #[should_panic(expected = "Not all scenarios are unique (have a unique thesis).")]
+    fn test_having_no_scenarios_panics() {
+        let test_company: Company = Company {
+            name: "Some Company".to_string(),
+            ticker: "SC".to_string(),
+            description: "Some business that's pretty interesting.".to_string(),
+            market_cap: 5e5,
+            scenarios: vec![
+                Scenario {
+                    thesis: "Same thesis as the other one.".to_string(),
+                    intrinsic_value: 1e6,
+                    probability: 0.6,
+                },
+                Scenario {
+                    thesis: "Same thesis as the other one.".to_string(),
+                    intrinsic_value: 2e6,
+                    probability: 0.4,
+                },
+            ],
+        };
+
+        test_company.validate();
+    }
+
+    #[test]
+    #[should_panic(expected = "Probabilities of all scenarios do not sum up to 1. Sum = 0.8.")]
+    fn test_probabilities_not_summing_up_to_one_panics() {
+        let test_company: Company = Company {
+            name: "Some Company".to_string(),
+            ticker: "SC".to_string(),
+            description: "Some business that's pretty interesting.".to_string(),
+            market_cap: 5e5,
+            scenarios: vec![
+                Scenario {
+                    thesis: "Worst case liquidation value.".to_string(),
+                    intrinsic_value: 1e6,
+                    probability: 0.5,
+                },
+                Scenario {
+                    thesis: "Base case liquidation value.".to_string(),
+                    intrinsic_value: 2e6,
+                    probability: 0.3,
+                },
+            ],
+        };
+
+        test_company.validate();
+    }
+
+    #[test]
+    fn two_companies_with_same_ticker_are_equal_irrespective_of_other_fields() {
+        let test_company_1 = Company {
+            name: "Some fancy name 1".to_string(),
+            ticker: "SFN".to_string(),
+            description: "A description".to_string(),
+            market_cap: 1e7,
+            scenarios: vec![],
+        };
+        let test_company_2 = Company {
+            name: "Some fancy name 2".to_string(),
+            ticker: "SFN".to_string(),
+            description: "A different description".to_string(),
+            market_cap: 1e7,
+            scenarios: vec![],
+        };
+
+        assert_eq!(test_company_1, test_company_2)
+    }
+
+    #[test]
+    fn two_companies_with_same_ticker_have_equal_hash_irrespective_of_other_fields() {
+        let test_company_1 = Company {
+            name: "Some fancy name 1".to_string(),
+            ticker: "SFN".to_string(),
+            description: "A description".to_string(),
+            market_cap: 1e7,
+            scenarios: vec![],
+        };
+        let test_company_2 = Company {
+            name: "Some fancy name 2".to_string(),
+            ticker: "SFN".to_string(),
+            description: "A different description".to_string(),
+            market_cap: 1e7,
+            scenarios: vec![],
+        };
+
+        let mut hasher = DefaultHasher::new();
+        assert_eq!(test_company_1.hash(&mut hasher), test_company_2.hash(&mut hasher));
     }
 }
