@@ -10,11 +10,11 @@ const PROBABILITY_TOLERANCE: f64 = 1e-10;
 /// A company with some basic information relevant for investment and a set of possible scenarios
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Company {
-    name: String,
-    ticker: String,
-    description: String,
-    market_cap: f64,
-    scenarios: Vec<Scenario>,
+    pub name: String,
+    pub ticker: String,
+    pub description: String,
+    pub market_cap: f64,
+    pub scenarios: Vec<Scenario>,
 }
 
 /// Two companies are considered equal if their ticker symbols are equal. This is done in order to
@@ -118,7 +118,7 @@ mod test {
               - thesis: Worst case liquidation value
                 intrinsic_value: 1e6
                 probability: 0.6
-              - thesis:  Base case liquidation value
+              - thesis: Base case liquidation value
                 intrinsic_value: 2e6
                 probability: 0.4
         ";

@@ -5,8 +5,8 @@ use serde::{Serialize, Deserialize};
 /// intrinsic value and the estimated probability that this scenario will play out in the future
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Scenario {
-    pub(crate) thesis: String,
-    pub(crate) intrinsic_value: f64,
+    pub thesis: String,
+    pub intrinsic_value: f64,
     pub probability: f64,
 }
 
