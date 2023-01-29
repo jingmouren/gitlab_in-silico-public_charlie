@@ -21,5 +21,5 @@ pub fn create_candidates(yaml_string: &str) -> Candidates {
 /// Calculates optimal allocation for each candidate company
 pub fn allocate(candidates: &Candidates) -> Portfolio {
     // TODO: Implement
-    panic!("Not implemented. Candidates are: {:?}", candidates);
+    panic!("Not implemented. Candidates are: {candidates:?}");
 }

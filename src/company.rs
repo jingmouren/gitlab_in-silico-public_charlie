@@ -74,10 +74,7 @@ impl Company {
             .map(|scenario| scenario.probability)
             .sum();
         if (sum - 1.0).abs() > PROBABILITY_TOLERANCE {
-            panic!(
-                "Probabilities of all scenarios do not sum up to 1. Sum = {}.",
-                sum
-            )
+            panic!("Probabilities of all scenarios do not sum up to 1. Sum = {sum}.")
         }
     }
 }
