@@ -1,4 +1,3 @@
-use std::collections::HashSet;
 use std::hash::{Hash, Hasher};
 use serde::{Serialize, Deserialize};
 
@@ -14,12 +13,12 @@ pub struct Company {
     ticker: String,
     description: String,
     market_cap: f64,
-    scenarios: HashSet<Scenario>,
+    scenarios: Vec<Scenario>,
 }
 
 /// Two companies are considered equal if their ticker symbols are equal. This is done in order to
-/// handle possibly dually listed shares where some arbitrage may be present (i.e. different market
-/// caps on different stock exchanges).
+/// possibly handle in the future dually listed shares where some arbitrage may be present (i.e.
+/// different market caps on different stock exchanges, for the same business).
 impl PartialEq<Self> for Company {
     fn eq(&self, other: &Self) -> bool {
         self.ticker == other.ticker
@@ -36,37 +35,19 @@ impl Hash for Company {
 }
 
 impl Company {
-    /// Create a new instance of Company that does validation after initialization
-    pub fn new(
-        name: String,
-        ticker: String,
-        description: String,
-        market_cap: f64,
-        scenarios: Vec<Scenario>,
-    ) -> Company {
-        // Fail if we have duplicate scenarios
-        if scenarios.len() != HashSet::from_iter(scenarios).len() {
-            panic!("Having scenarios with the same thesis is not allowed. Scenarios are: {:?}", scenarios.map(|scenario| ", {}", scenario.thesis))
-        }
-
-        let company = Company {
-            name,
-            ticker,
-            description,
-            market_cap,
-            scenarios,
-        };
-
-        company.validate();
-
-        return company;
-    }
-
     /// Does all validations. Used after construction
     fn validate(&self) {
         self.validate_all_scenarios_unique();
         self.validate_at_least_one_scenario();
         self.validate_probabilities_sum_up_to_one();
+    }
+
+    /// Panics if all scenarios are not unique
+    /// TODO: Convert panics to recoverable errors that can be handled
+    fn validate_all_scenarios_unique(&self) {
+        if self.scenarios.len() != self.scenarios.iter().clone().collect::<Vec<_>>().len() {
+            panic!("Not all scenarios are unique (have a unique thesis). Check your input.")
+        }
     }
 
     /// Panics if we don't have at least one scenario
@@ -97,5 +78,62 @@ mod test {
     #[test]
     fn test_probability_tolerance_doesnt_change() {
         assert_eq!(PROBABILITY_TOLERANCE, 1e-10)
+    }
+
+    #[test]
+    fn test_company_serialization() {
+        let test_company: Company = Company {
+            name: "Some Company".to_string(),
+            ticker: "SC".to_string(),
+            description: "Some business that's pretty interesting.".to_string(),
+            market_cap: 5e5,
+            scenarios: vec![
+                Scenario {
+                    thesis: "Worst case liquidation value".to_string(),
+                    intrinsic_value: 1e6,
+                    probability: 0.6,
+                },
+                Scenario {
+                    thesis: "Base case liquidation value".to_string(),
+                    intrinsic_value: 2e6,
+                    probability: 0.4,
+                },
+            ],
+        };
+        let test_str = serde_yaml::to_string(&test_company).unwrap();
+
+        assert_eq!(test_str, "name: Some Company\nticker: SC\ndescription: Some business that's pretty interesting.\nmarket_cap: 500000.0\nscenarios:\n- thesis: Worst case liquidation value\n  intrinsic_value: 1000000.0\n  probability: 0.6\n- thesis: Base case liquidation value\n  intrinsic_value: 2000000.0\n  probability: 0.4\n");
+    }
+
+    #[test]
+    fn test_company_deserialization() {
+        let test_yaml: &str = "
+            name: Some company
+            ticker: SC
+            description: Some business that's pretty interesting.
+            market_cap: 5e5
+            scenarios:
+              - thesis: Worst case liquidation value
+                intrinsic_value: 1e6
+                probability: 0.6
+              - thesis:  Base case liquidation value
+                intrinsic_value: 2e6
+                probability: 0.4
+        ";
+
+        let test_company: Company = serde_yaml::from_str(&test_yaml).unwrap();
+
+        assert_eq!(test_company.name, "Some company");
+        assert_eq!(test_company.ticker, "SC");
+        assert_eq!(test_company.description, "Some business that's pretty interesting.");
+        assert_eq!(test_company.market_cap, 5e5);
+
+        assert_eq!(test_company.scenarios[0].thesis, "Worst case liquidation value");
+        assert_eq!(test_company.scenarios[0].intrinsic_value, 1e6);
+        assert_eq!(test_company.scenarios[0].probability, 0.6);
+
+        assert_eq!(test_company.scenarios[1].thesis, "Base case liquidation value");
+        assert_eq!(test_company.scenarios[1].intrinsic_value, 2e6);
+        assert_eq!(test_company.scenarios[1].probability, 0.4);
     }
 }
