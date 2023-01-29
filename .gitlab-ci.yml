@@ -33,5 +33,7 @@ test:
   stage: test
   script:
     - cargo test
-    - cargo install cargo-tarpaulin
-    - cargo tarpaulin --ignore-tests
+    # TODO: Fix issue with ted (gitlab runner) by modifying its config. See here for more details
+    #  https://github.com/xd009642/tarpaulin/issues/146#issuecomment-554302029
+    # - cargo install cargo-tarpaulin
+    # - cargo tarpaulin --ignore-tests
