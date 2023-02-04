@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use std::hash::{Hash, Hasher};
 
-use crate::scenario::Scenario;
+use crate::model::scenario::Scenario;
 
 /// Tolerance when validating that all probabilities across scenarios sum up to 1
 const PROBABILITY_TOLERANCE: f64 = 1e-10;

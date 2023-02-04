@@ -1,8 +1,7 @@
-use crate::company::Company;
-use std::collections::HashMap;
+mod model;
 
-mod company;
-mod scenario;
+use crate::model::company::Company;
+use std::collections::HashMap;
 
 /// Portfolio is a map of companies with associated fractions/allocations (e.g. company ABC is 20%
 /// of the portfolio)
@@ -18,8 +17,12 @@ pub fn create_candidates(yaml_string: &str) -> Candidates {
     candidates
 }
 
+/// Prints useful information about the portfolio
+pub fn analyse(portfolio: &Portfolio) {
+    todo!()
+}
+
 /// Calculates optimal allocation for each candidate company
 pub fn allocate(candidates: &Candidates) -> Portfolio {
-    // TODO: Implement
-    panic!("Not implemented. Candidates are: {candidates:?}");
+    todo!()
 }

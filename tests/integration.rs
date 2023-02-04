@@ -75,7 +75,7 @@ fn test_create_candidates() {
 }
 
 #[test]
-#[should_panic(expected = "Not implemented.")]
+#[should_panic(expected = "not yet implemented")]
 fn test_allocate() {
     allocate(&vec![]);
 }
