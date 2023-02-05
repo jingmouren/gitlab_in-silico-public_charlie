@@ -17,7 +17,7 @@ def print_unique_outcomes():
     print(f"Number of all combinations: {len(outer_product)}")
     
     unique = list(set(map(lambda p: tuple(sorted(p)), outer_product)))
-    print(f"Number of combinations having the same outcome: {len(unique)}")
+    print(f"Number of combinations having the same Outcome: {len(unique)}")
 
 
 def print_total_number_of_bets():

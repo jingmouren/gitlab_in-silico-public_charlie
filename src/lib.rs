@@ -1,5 +1,7 @@
+mod analysis;
 mod model;
 
+use crate::analysis::expected_return;
 use crate::model::company::Company;
 use std::collections::HashMap;
 
@@ -19,7 +21,7 @@ pub fn create_candidates(yaml_string: &str) -> Candidates {
 
 /// Prints useful information about the portfolio
 pub fn analyse(portfolio: &Portfolio) {
-    todo!()
+    expected_return(portfolio);
 }
 
 /// Calculates optimal allocation for each candidate company
