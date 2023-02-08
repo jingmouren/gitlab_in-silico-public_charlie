@@ -4,8 +4,8 @@ use std::hash::{Hash, Hasher};
 
 use crate::model::scenario::Scenario;
 
-/// Tolerance when validating that all probabilities across scenarios sum up to 1
-const PROBABILITY_TOLERANCE: f64 = 1e-10;
+/// Tolerance for comparing floats
+pub(crate) const TOLERANCE: f64 = 1e-10;
 
 /// A company with some basic information relevant for investment and a set of possible scenarios
 #[derive(Serialize, Deserialize, Debug)]
@@ -73,7 +73,7 @@ impl Company {
             .iter()
             .map(|scenario| scenario.probability)
             .sum();
-        if (sum - 1.0).abs() > PROBABILITY_TOLERANCE {
+        if (sum - 1.0).abs() > TOLERANCE {
             panic!("Probabilities of all scenarios do not sum up to 1. Sum = {sum}.")
         }
     }
@@ -86,7 +86,7 @@ mod test {
 
     #[test]
     fn test_probability_tolerance_doesnt_change() {
-        assert_eq!(PROBABILITY_TOLERANCE, 1e-10)
+        assert_eq!(TOLERANCE, 1e-10)
     }
 
     #[test]
