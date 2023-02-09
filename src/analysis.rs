@@ -12,6 +12,10 @@ struct Outcome {
 
 /// Returns all possible outcomes (expected portfolio return and associated probability)
 fn all_outcomes(portfolio: &Portfolio) -> Vec<Outcome> {
+    if portfolio.is_empty() {
+        panic!("Will not calculate outcomes for an empty portfolio.")
+    }
+
     // Number of different outcomes is a product of number of all scenarios for all companies
     let n_outcomes = portfolio.keys().map(|c| c.scenarios.len()).product();
 
@@ -25,9 +29,7 @@ fn all_outcomes(portfolio: &Portfolio) -> Vec<Outcome> {
     }
 
     // Collect relevant portfolio data into a sorted Vec to have reproducibility in tests
-    // Note: Items in the vector are reference counted Company instances so that we don't make
-    // unnecessary copies
-    let tickers_and_fractions: Vec<(&Company, f64)> = portfolio
+    let companies_and_fractions: Vec<(&Company, f64)> = portfolio
         .iter()
         .map(|(c, f)| (c, f.clone()))
         .sorted_by(|(c1, _), (c2, _)| c1.ticker.cmp(&c2.ticker))
@@ -38,17 +40,22 @@ fn all_outcomes(portfolio: &Portfolio) -> Vec<Outcome> {
     let mut outcomes: Vec<Outcome> = Vec::with_capacity(n_outcomes);
 
     // 2. Helper vectors keeping track of current indices for scenarios of all companies
-    let mut scenario_indices: Vec<usize> = vec![0; tickers_and_fractions.len()];
-    let n_scenarios: Vec<usize> = portfolio.keys().map(|c| c.scenarios.len()).collect();
+    let mut scenario_indices: Vec<usize> = vec![0; companies_and_fractions.len()];
+    let n_scenarios: Vec<usize> = companies_and_fractions
+        .iter()
+        .map(|(c, _)| c.scenarios.len())
+        .collect();
 
     // Start filling in outcomes until all are collected
     while outcomes.len() != n_outcomes {
         // 1. Calculate the outcome by summing up scenarios for all companies
+        // Note: Probability is initialized with 1.0 since we multiply to get joint probability
         let mut outcome = Outcome {
             portfolio_return: 0.0,
             probability: 1.0,
         };
-        tickers_and_fractions
+
+        companies_and_fractions
             .iter()
             .enumerate()
             .for_each(|(ticker_id, (c, f))| {
@@ -263,62 +270,67 @@ mod test {
     }
 
     #[test]
-    fn test_all_outcomes() {
+    #[should_panic(expected = "Will not calculate outcomes for an empty portfolio.")]
+    fn test_all_outcomes_no_assets() {
+        let test_portfolio = Portfolio::new();
+        let all_outcomes = all_outcomes(&test_portfolio);
+    }
+
+    #[test]
+    fn test_all_outcomes_three_assets() {
         let test_portfolio = get_test_portfolio_with_three_assets();
         let all_outcomes = all_outcomes(&test_portfolio);
-
-        // TODO: Undefined behaviour in test: it occasionally fails
 
         assert_eq!(
             all_outcomes,
             vec![
                 Outcome {
                     portfolio_return: 0.43,
-                    probability: 0.09
+                    probability: 0.09,
                 },
                 Outcome {
                     portfolio_return: 0.23,
-                    probability: 0.09
+                    probability: 0.09,
                 },
                 Outcome {
                     portfolio_return: 0.13,
-                    probability: 0.06
+                    probability: 0.06,
                 },
                 Outcome {
                     portfolio_return: -0.07,
-                    probability: 0.06
+                    probability: 0.06,
                 },
                 Outcome {
                     portfolio_return: 0.355,
-                    probability: 0.09
+                    probability: 0.09,
                 },
                 Outcome {
                     portfolio_return: 0.155,
-                    probability: 0.09
+                    probability: 0.09,
                 },
                 Outcome {
                     portfolio_return: 0.055,
-                    probability: 0.06
+                    probability: 0.06,
                 },
                 Outcome {
                     portfolio_return: -0.145,
-                    probability: 0.06
+                    probability: 0.06,
                 },
                 Outcome {
                     portfolio_return: 0.28,
-                    probability: 0.12
+                    probability: 0.12,
                 },
                 Outcome {
                     portfolio_return: 0.08,
-                    probability: 0.12
+                    probability: 0.12,
                 },
                 Outcome {
                     portfolio_return: -0.02,
-                    probability: 0.08
+                    probability: 0.08,
                 },
                 Outcome {
                     portfolio_return: -0.22,
-                    probability: 0.08
+                    probability: 0.08,
                 },
             ]
         )
