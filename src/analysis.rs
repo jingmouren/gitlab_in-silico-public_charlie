@@ -1,17 +1,16 @@
 use crate::model::company::Company;
 use crate::Portfolio;
 use itertools::Itertools;
-use std::collections::HashMap;
 
-/// Helper struct for collecting outcomes and their associated probabilities
+/// An outcome consists of its probability and portfolio return
 #[derive(Debug)]
-struct Outcome {
+pub struct Outcome {
     portfolio_return: f64,
     probability: f64,
 }
 
 /// Returns all possible outcomes (expected portfolio return and associated probability)
-fn all_outcomes(portfolio: &Portfolio) -> Vec<Outcome> {
+pub fn all_outcomes(portfolio: &Portfolio) -> Vec<Outcome> {
     if portfolio.is_empty() {
         panic!("Will not calculate outcomes for an empty portfolio.")
     }
@@ -21,17 +20,16 @@ fn all_outcomes(portfolio: &Portfolio) -> Vec<Outcome> {
 
     if n_outcomes > 50000 {
         panic!(
-            "You have {} different outcomes for your portfolio. This software is designed for \
-        a focused investment strategy, and it seems you have too many companies or too many \
-        scenarios for companies.",
-            n_outcomes
+            "You have {n_outcomes} different outcomes for your portfolio. This software is \
+        designed for a focused investment strategy, and it seems you have too many companies or \
+        too many scenarios for companies.",
         )
     }
 
     // Collect relevant portfolio data into a sorted Vec to have reproducibility in tests
     let companies_and_fractions: Vec<(&Company, f64)> = portfolio
         .iter()
-        .map(|(c, f)| (c, f.clone()))
+        .map(|(c, f)| (c, *f))
         .sorted_by(|(c1, _), (c2, _)| c1.ticker.cmp(&c2.ticker))
         .collect();
 
@@ -114,6 +112,7 @@ mod test {
     use crate::model::company;
     use crate::model::company::Company;
     use crate::model::scenario::Scenario;
+    use crate::HashMap;
 
     impl PartialEq<Self> for Outcome {
         fn eq(&self, other: &Self) -> bool {
@@ -272,8 +271,42 @@ mod test {
     #[test]
     #[should_panic(expected = "Will not calculate outcomes for an empty portfolio.")]
     fn test_all_outcomes_no_assets() {
+        // Create an empty portfolio and attempt to calculate all outcomes, which fails
         let test_portfolio = Portfolio::new();
-        let all_outcomes = all_outcomes(&test_portfolio);
+        all_outcomes(&test_portfolio);
+    }
+
+    #[test]
+    #[should_panic(expected = "You have 65536 different outcomes for your portfolio.")]
+    fn test_all_outcomes_too_many_assets_and_scenarios() {
+        // Create a portfolio with 16 companies, each with 2 scenarios
+        let mut test_portfolio = Portfolio::new();
+        for i in 0..16 {
+            test_portfolio.insert(
+                Company {
+                    name: format!("{i}"),
+                    ticker: format!("{i}"),
+                    description: format!("{i}"),
+                    market_cap: 1e6,
+                    scenarios: vec![
+                        Scenario {
+                            thesis: "Head".to_string(),
+                            intrinsic_value: 2e6,
+                            probability: 0.5,
+                        },
+                        Scenario {
+                            thesis: "Tail".to_string(),
+                            intrinsic_value: 0.0,
+                            probability: 0.5,
+                        },
+                    ],
+                },
+                0.0625,
+            );
+        }
+
+        // Should fail because there's more than 50000 outcomes
+        all_outcomes(&test_portfolio);
     }
 
     #[test]

@@ -1,6 +1,7 @@
 mod analysis;
 mod model;
 
+use crate::analysis::all_outcomes;
 use crate::analysis::expected_return;
 use crate::model::company::Company;
 use std::collections::HashMap;
@@ -22,9 +23,11 @@ pub fn create_candidates(yaml_string: &str) -> Candidates {
 /// Prints useful information about the portfolio
 pub fn analyse(portfolio: &Portfolio) {
     expected_return(portfolio);
+    println!("{:?}", all_outcomes(portfolio));
+    todo!("Process outcomes")
 }
 
 /// Calculates optimal allocation for each candidate company
-pub fn allocate(candidates: &Candidates) -> Portfolio {
-    todo!()
+pub fn allocate(_candidates: &Candidates) -> Portfolio {
+    todo!("Kelly formula allocation")
 }
