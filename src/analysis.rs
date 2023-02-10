@@ -11,18 +11,18 @@ pub struct Outcome {
 
 /// Returns all possible outcomes (expected portfolio return and associated probability)
 pub fn all_outcomes(portfolio: &Portfolio) -> Vec<Outcome> {
-    if portfolio.is_empty() {
-        panic!("Will not calculate outcomes for an empty portfolio.")
-    }
-
     // Number of different outcomes is a product of number of all scenarios for all companies
-    let n_outcomes = portfolio.keys().map(|c| c.scenarios.len()).product();
+    let n_outcomes = if !portfolio.is_empty() {
+        portfolio.keys().map(|c| c.scenarios.len()).product()
+    } else {
+        0
+    };
 
     if n_outcomes > 50000 {
         panic!(
             "You have {n_outcomes} different outcomes for your portfolio. This software is \
-        designed for a focused investment strategy, and it seems you have too many companies or \
-        too many scenarios for companies.",
+            designed for a focused investment strategy, and it seems you have too many companies \
+            or too many scenarios for companies.",
         )
     }
 
@@ -269,11 +269,11 @@ mod test {
     }
 
     #[test]
-    #[should_panic(expected = "Will not calculate outcomes for an empty portfolio.")]
     fn test_all_outcomes_no_assets() {
         // Create an empty portfolio and attempt to calculate all outcomes, which fails
         let test_portfolio = Portfolio::new();
-        all_outcomes(&test_portfolio);
+        let all_outcomes = all_outcomes(&test_portfolio);
+        assert_eq!(all_outcomes, vec![]);
     }
 
     #[test]
