@@ -1,8 +1,8 @@
 mod analysis;
 mod model;
 
-use crate::analysis::expected_return;
 use crate::analysis::{all_outcomes, worst_case_outcome};
+use crate::analysis::{cumulative_probability_of_loss, expected_return};
 use crate::model::company::Company;
 use std::collections::HashMap;
 
@@ -26,6 +26,7 @@ pub fn analyse(portfolio: &Portfolio) {
 
     let all_outcomes = all_outcomes(portfolio);
     worst_case_outcome(&all_outcomes);
+    cumulative_probability_of_loss(&all_outcomes);
     todo!("Process outcomes")
 }
 

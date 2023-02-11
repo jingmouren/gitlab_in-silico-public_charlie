@@ -123,6 +123,19 @@ pub fn worst_case_outcome(outcomes: &[Outcome]) -> &Outcome {
     worst_case_outcome
 }
 
+/// Calculates the cumulative probability of losing money
+pub fn cumulative_probability_of_loss(outcomes: &[Outcome]) -> f64 {
+    let cumulative_probability_of_loss = outcomes
+        .iter()
+        .filter(|o| o.portfolio_return < 0.0)
+        .map(|o| o.probability)
+        .sum();
+
+    println!("Cumulative probability of loss of capital is {cumulative_probability_of_loss}");
+
+    cumulative_probability_of_loss
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -246,7 +259,7 @@ mod test {
             1.0,
         );
 
-        assert!(expected_return(&test_portfolio) < 1e-10);
+        assert!(expected_return(&test_portfolio) < company::TOLERANCE);
     }
 
     #[test]
@@ -276,14 +289,14 @@ mod test {
             1.0,
         );
 
-        assert!((expected_return(&test_portfolio) - 0.6).abs() < 1e-10);
+        assert!((expected_return(&test_portfolio) - 0.6).abs() < company::TOLERANCE);
     }
 
     #[test]
     fn test_expected_value_three_assets() {
         let test_portfolio = get_test_portfolio_with_three_assets();
 
-        assert!((expected_return(&test_portfolio) - 0.285).abs() < 1e-10);
+        assert!((expected_return(&test_portfolio) - 0.285).abs() < company::TOLERANCE);
     }
 
     #[test]
@@ -401,5 +414,14 @@ mod test {
                 probability: 0.08
             }
         )
+    }
+
+    #[test]
+    fn test_cumulative_probability_of_loss() {
+        let test_portfolio = get_test_portfolio_with_three_assets();
+        let all_outcomes = all_outcomes(&test_portfolio);
+        let cumulative_probability_of_loss = cumulative_probability_of_loss(&all_outcomes);
+
+        assert!((cumulative_probability_of_loss - 0.28).abs() < company::TOLERANCE);
     }
 }
