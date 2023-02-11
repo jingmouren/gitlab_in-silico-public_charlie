@@ -1,8 +1,8 @@
 mod analysis;
 mod model;
 
-use crate::analysis::all_outcomes;
 use crate::analysis::expected_return;
+use crate::analysis::{all_outcomes, worst_case_outcome};
 use crate::model::company::Company;
 use std::collections::HashMap;
 
@@ -23,7 +23,9 @@ pub fn create_candidates(yaml_string: &str) -> Candidates {
 /// Prints useful information about the portfolio
 pub fn analyse(portfolio: &Portfolio) {
     expected_return(portfolio);
-    println!("{:?}", all_outcomes(portfolio));
+
+    let all_outcomes = all_outcomes(portfolio);
+    worst_case_outcome(&all_outcomes);
     todo!("Process outcomes")
 }
 

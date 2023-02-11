@@ -15,5 +15,6 @@ path = "src/lib.rs"
 
 [dependencies]
 itertools = "0.10.5"
+ordered-float = "3.4.0"
 serde = { version = "1.0.152", features = ["derive"] }
 serde_yaml = "0.9.17"

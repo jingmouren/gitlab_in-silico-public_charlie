@@ -1,6 +1,7 @@
 use crate::model::company::Company;
 use crate::Portfolio;
 use itertools::Itertools;
+use ordered_float::OrderedFloat;
 
 /// An outcome consists of its probability and portfolio return
 #[derive(Debug)]
@@ -104,6 +105,22 @@ pub fn expected_return(portfolio: &Portfolio) -> f64 {
     );
 
     expected_return
+}
+
+/// Finds an outcome with maximum loss of capital and reports its probability
+pub fn worst_case_outcome(outcomes: &[Outcome]) -> &Outcome {
+    let worst_case_outcome = outcomes
+        .iter()
+        .min_by_key(|o| OrderedFloat(o.portfolio_return))
+        .unwrap(); // TODO: Handle errors
+
+    println!(
+        "Worst case outcome implies permanent loss of {}% of invested assets with probability {}%",
+        100.0 * worst_case_outcome.portfolio_return,
+        100.0 * worst_case_outcome.probability
+    );
+
+    worst_case_outcome
 }
 
 #[cfg(test)]
@@ -265,6 +282,7 @@ mod test {
     #[test]
     fn test_expected_value_three_assets() {
         let test_portfolio = get_test_portfolio_with_three_assets();
+
         assert!((expected_return(&test_portfolio) - 0.285).abs() < 1e-10);
     }
 
@@ -273,6 +291,7 @@ mod test {
         // Create an empty portfolio and attempt to calculate all outcomes, which fails
         let test_portfolio = Portfolio::new();
         let all_outcomes = all_outcomes(&test_portfolio);
+
         assert_eq!(all_outcomes, vec![]);
     }
 
@@ -366,6 +385,21 @@ mod test {
                     probability: 0.08,
                 },
             ]
+        )
+    }
+
+    #[test]
+    fn test_worst_case_scenario() {
+        let test_portfolio = get_test_portfolio_with_three_assets();
+        let all_outcomes = all_outcomes(&test_portfolio);
+        let worst_case = worst_case_outcome(&all_outcomes);
+
+        assert_eq!(
+            *worst_case,
+            Outcome {
+                portfolio_return: -0.22,
+                probability: 0.08
+            }
         )
     }
 }
