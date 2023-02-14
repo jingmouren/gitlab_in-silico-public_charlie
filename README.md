@@ -5,9 +5,10 @@ Tools to help with capital allocation process.
 ## TODO
 
 - [x] Calculation of expected value
-- [ ] Calculation of probability of loss of capital
+- [x] Calculation of probability of loss of capital
+- [ ] Allocation via Kelly's formula for multiple investments
 - [ ] Command line interface
-- [ ] Allocation via Kelly's formula for multiple parallel investments
+- [ ] Error handling
 - [ ] Server
 
 ## Investment process
