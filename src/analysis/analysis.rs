@@ -1,13 +1,15 @@
-use crate::model::company::Company;
+use crate::model::company::{Company, Ticker};
 use crate::Portfolio;
 use itertools::Itertools;
 use ordered_float::OrderedFloat;
+use std::collections::HashMap;
 
 /// An outcome consists of its probability and portfolio return
 #[derive(Debug)]
 pub struct Outcome {
-    portfolio_return: f64,
-    probability: f64,
+    pub portfolio_return: f64,
+    pub probability: f64,
+    pub company_returns: HashMap<Ticker, f64>,
 }
 
 /// Returns all possible outcomes (expected portfolio return and associated probability)
@@ -52,6 +54,7 @@ pub fn all_outcomes(portfolio: &Portfolio) -> Vec<Outcome> {
         let mut outcome = Outcome {
             portfolio_return: 0.0,
             probability: 1.0,
+            company_returns: HashMap::with_capacity(portfolio.len()),
         };
 
         companies_and_fractions
@@ -61,9 +64,12 @@ pub fn all_outcomes(portfolio: &Portfolio) -> Vec<Outcome> {
                 let scenario_id = scenario_indices[ticker_id];
                 let s = &c.scenarios[scenario_id];
 
-                outcome.portfolio_return +=
-                    f * s.probability * (s.intrinsic_value - c.market_cap) / c.market_cap;
+                let company_return = (s.intrinsic_value - c.market_cap) / c.market_cap;
+                outcome.portfolio_return += f * s.probability * company_return;
                 outcome.probability *= s.probability;
+                outcome
+                    .company_returns
+                    .insert(c.ticker.clone(), company_return);
             });
 
         // 2. Append the calculated outcome to the list of outcomes

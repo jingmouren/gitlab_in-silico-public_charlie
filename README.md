@@ -6,6 +6,7 @@ Tools to help with capital allocation process.
 
 - [x] Calculation of expected value
 - [x] Calculation of probability of loss of capital
+- [x] Improve test coverage of company_returns field
 - [ ] Allocation via Kelly's formula for multiple investments
 - [ ] Command line interface
 - [ ] Error handling

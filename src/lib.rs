@@ -1,3 +1,4 @@
+mod allocation;
 mod analysis;
 mod model;
 

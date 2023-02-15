@@ -4,6 +4,8 @@ use std::hash::{Hash, Hasher};
 
 use crate::model::scenario::Scenario;
 
+pub type Ticker = String;
+
 /// Tolerance for comparing floats
 pub(crate) const TOLERANCE: f64 = 1e-10;
 
@@ -11,7 +13,7 @@ pub(crate) const TOLERANCE: f64 = 1e-10;
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Company {
     pub name: String,
-    pub ticker: String,
+    pub ticker: Ticker,
     pub description: String,
     pub market_cap: f64,
     pub scenarios: Vec<Scenario>,
