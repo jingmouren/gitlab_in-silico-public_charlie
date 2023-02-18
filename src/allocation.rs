@@ -1,9 +1,10 @@
 use crate::analysis::Outcome;
 use crate::model::company::Company;
 use nalgebra::DMatrix;
+use num_traits::pow::Pow;
 
 /// Calculates the Jacobian given all outcomes, companies and their fractions
-pub fn _jacobian(
+pub fn jacobian(
     outcomes: &[Outcome],
     candidates_and_fractions: Vec<(&Company, f64)>,
 ) -> DMatrix<f64> {
@@ -26,6 +27,7 @@ pub fn _jacobian(
                                 .iter()
                                 .map(|(c, f)| f * o.company_returns[&c.ticker])
                                 .sum::<f64>())
+                        .pow(-2)
                 })
                 .sum::<f64>()
         }
@@ -37,9 +39,12 @@ pub fn _jacobian(
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::model::company;
     use crate::model::company::Company;
     use crate::model::scenario::Scenario;
     use std::collections::HashMap;
+
+    const ASSERTION_TOLERANCE: f64 = 1e-6;
 
     #[test]
     fn test_jacobian() {
@@ -82,30 +87,57 @@ mod test {
             },
         ];
 
-        //let outcomes: Vec<Outcome> = vec![
-        //    // Event A1 and B1
-        //    Outcome {
-        //        portfolio_return: 0.43,
-        //        probability: 0.35,
-        //        company_returns: HashMap::from([
-        //            ("Norway", 25),
-        //            ("Denmark", 24),
-        //            ("Iceland", 12),
-        //        ])
-        //    },
-        //    Outcome {
-        //        portfolio_return: 0.23,
-        //        probability: 0.4,
-        //    },
-        //];
-        //
-        //
-        //let jacobian = jacobian(&outcomes, &candidates);
-        //
-        //for i in 0..candidates.len() {
-        //    for j in 0..candidates.len() {
-        //        assert_eq!(jacobian[(i, j)], 0.0)
-        //    }
-        //}
+        let candidates_and_fractions: Vec<(&Company, f64)> =
+            vec![(&candidates[0], 0.5), (&candidates[1], 0.5)];
+
+        let outcomes: Vec<Outcome> = vec![
+            // Events A1 and B1
+            Outcome {
+                weighted_return: 0.75,
+                probability: 0.35,
+                company_returns: HashMap::from([("A".to_string(), 1.0), ("B".to_string(), 0.5)]),
+            },
+            // Events A1 and B2
+            Outcome {
+                weighted_return: 0.35,
+                probability: 0.15,
+                company_returns: HashMap::from([("A".to_string(), 1.0), ("B".to_string(), -0.3)]),
+            },
+            // Events A2 and B1
+            Outcome {
+                weighted_return: 0.0,
+                probability: 0.35,
+                company_returns: HashMap::from([("A".to_string(), -0.5), ("B".to_string(), 0.5)]),
+            },
+            // Events A2 and B1
+            Outcome {
+                weighted_return: -0.4,
+                probability: 0.15,
+                company_returns: HashMap::from([("A".to_string(), -0.5), ("B".to_string(), -0.3)]),
+            },
+        ];
+
+        let jacobian = jacobian(&outcomes, candidates_and_fractions);
+
+        assert!(
+            (jacobian[(0, 0)] + 0.388256908).abs() < ASSERTION_TOLERANCE,
+            "Jacobian at (0,0) is: {}",
+            jacobian[(0, 0)]
+        );
+        assert!(
+            (jacobian[(0, 1)] + 0.007451499).abs() < ASSERTION_TOLERANCE,
+            "Jacobian at (0,1) is: {}",
+            jacobian[(0, 1)]
+        );
+        assert!(
+            (jacobian[(1, 0)] + 0.007451499).abs() < ASSERTION_TOLERANCE,
+            "Jacobian at (1,0) is: {}",
+            jacobian[(1, 0)]
+        );
+        assert!(
+            (jacobian[(1, 1)] + 0.160978836).abs() < ASSERTION_TOLERANCE,
+            "Jacobian at (1,1) is: {}",
+            jacobian[(1, 1)]
+        );
     }
 }

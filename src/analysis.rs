@@ -7,7 +7,7 @@ use std::collections::HashMap;
 /// An outcome consists of its probability and portfolio return
 #[derive(Debug)]
 pub struct Outcome {
-    pub total_return: f64,
+    pub weighted_return: f64,
     pub probability: f64,
     pub company_returns: HashMap<Ticker, f64>,
 }
@@ -52,7 +52,7 @@ pub fn all_outcomes(portfolio: &Portfolio) -> Vec<Outcome> {
         // 1. Calculate the outcome by summing up scenarios for all companies
         // Note: Probability is initialized with 1.0 since we multiply to get joint probability
         let mut outcome = Outcome {
-            total_return: 0.0,
+            weighted_return: 0.0,
             probability: 1.0,
             company_returns: HashMap::with_capacity(portfolio.len()),
         };
@@ -65,7 +65,7 @@ pub fn all_outcomes(portfolio: &Portfolio) -> Vec<Outcome> {
                 let s = &c.scenarios[scenario_id];
 
                 let company_return = (s.intrinsic_value - c.market_cap) / c.market_cap;
-                outcome.total_return += f * company_return;
+                outcome.weighted_return += f * company_return;
                 outcome.probability *= s.probability;
                 outcome
                     .company_returns
@@ -117,12 +117,12 @@ pub fn expected_return(portfolio: &Portfolio) -> f64 {
 pub fn worst_case_outcome(outcomes: &[Outcome]) -> &Outcome {
     let worst_case_outcome = outcomes
         .iter()
-        .min_by_key(|o| OrderedFloat(o.total_return))
+        .min_by_key(|o| OrderedFloat(o.weighted_return))
         .unwrap(); // TODO: Handle errors
 
     println!(
         "Worst case outcome implies permanent loss of {}% of invested assets with probability {}%",
-        100.0 * worst_case_outcome.total_return,
+        100.0 * worst_case_outcome.weighted_return,
         100.0 * worst_case_outcome.probability
     );
 
@@ -133,7 +133,7 @@ pub fn worst_case_outcome(outcomes: &[Outcome]) -> &Outcome {
 pub fn cumulative_probability_of_loss(outcomes: &[Outcome]) -> f64 {
     let cumulative_probability_of_loss = outcomes
         .iter()
-        .filter(|o| o.total_return < 0.0)
+        .filter(|o| o.weighted_return < 0.0)
         .map(|o| o.probability)
         .sum();
 
@@ -152,7 +152,7 @@ mod test {
 
     impl PartialEq<Self> for Outcome {
         fn eq(&self, other: &Self) -> bool {
-            ((self.total_return - other.total_return).abs() < company::TOLERANCE)
+            ((self.weighted_return - other.weighted_return).abs() < company::TOLERANCE)
                 && ((self.probability - other.probability).abs() < company::TOLERANCE)
                 && (self.company_returns.iter().all(|(ticker, ret)| {
                     (ret - other.company_returns[ticker]).abs() < company::TOLERANCE
@@ -359,7 +359,7 @@ mod test {
             all_outcomes,
             vec![
                 Outcome {
-                    total_return: 1.0,
+                    weighted_return: 1.0,
                     probability: 0.09,
                     company_returns: HashMap::from([
                         ("A".to_string(), 1.0),
@@ -368,7 +368,7 @@ mod test {
                     ])
                 },
                 Outcome {
-                    total_return: 0.6,
+                    weighted_return: 0.6,
                     probability: 0.09,
                     company_returns: HashMap::from([
                         ("A".to_string(), -1.0),
@@ -377,7 +377,7 @@ mod test {
                     ])
                 },
                 Outcome {
-                    total_return: 0.4,
+                    weighted_return: 0.4,
                     probability: 0.06,
                     company_returns: HashMap::from([
                         ("A".to_string(), 1.0),
@@ -386,7 +386,7 @@ mod test {
                     ])
                 },
                 Outcome {
-                    total_return: 0.0,
+                    weighted_return: 0.0,
                     probability: 0.06,
                     company_returns: HashMap::from([
                         ("A".to_string(), -1.0),
@@ -395,7 +395,7 @@ mod test {
                     ])
                 },
                 Outcome {
-                    total_return: 0.75,
+                    weighted_return: 0.75,
                     probability: 0.09,
                     company_returns: HashMap::from([
                         ("A".to_string(), 1.0),
@@ -404,7 +404,7 @@ mod test {
                     ])
                 },
                 Outcome {
-                    total_return: 0.35,
+                    weighted_return: 0.35,
                     probability: 0.09,
                     company_returns: HashMap::from([
                         ("A".to_string(), -1.0),
@@ -413,7 +413,7 @@ mod test {
                     ])
                 },
                 Outcome {
-                    total_return: 0.15,
+                    weighted_return: 0.15,
                     probability: 0.06,
                     company_returns: HashMap::from([
                         ("A".to_string(), 1.0),
@@ -422,7 +422,7 @@ mod test {
                     ])
                 },
                 Outcome {
-                    total_return: -0.25,
+                    weighted_return: -0.25,
                     probability: 0.06,
                     company_returns: HashMap::from([
                         ("A".to_string(), -1.0),
@@ -431,7 +431,7 @@ mod test {
                     ])
                 },
                 Outcome {
-                    total_return: 0.5,
+                    weighted_return: 0.5,
                     probability: 0.12,
                     company_returns: HashMap::from([
                         ("A".to_string(), 1.0),
@@ -440,7 +440,7 @@ mod test {
                     ])
                 },
                 Outcome {
-                    total_return: 0.1,
+                    weighted_return: 0.1,
                     probability: 0.12,
                     company_returns: HashMap::from([
                         ("A".to_string(), -1.0),
@@ -449,7 +449,7 @@ mod test {
                     ])
                 },
                 Outcome {
-                    total_return: -0.1,
+                    weighted_return: -0.1,
                     probability: 0.08,
                     company_returns: HashMap::from([
                         ("A".to_string(), 1.0),
@@ -458,7 +458,7 @@ mod test {
                     ])
                 },
                 Outcome {
-                    total_return: -0.5,
+                    weighted_return: -0.5,
                     probability: 0.08,
                     company_returns: HashMap::from([
                         ("A".to_string(), -1.0),
@@ -479,7 +479,7 @@ mod test {
         assert_eq!(
             *worst_case,
             Outcome {
-                total_return: -0.5,
+                weighted_return: -0.5,
                 probability: 0.08,
                 company_returns: HashMap::from([
                     ("A".to_string(), -1.0),

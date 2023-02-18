@@ -156,6 +156,7 @@ version = "0.1.0"
 dependencies = [
  "itertools",
  "nalgebra",
+ "num-traits",
  "ordered-float",
  "serde",
  "serde_yaml",
