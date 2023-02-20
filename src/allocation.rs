@@ -1,18 +1,103 @@
-use crate::analysis::Outcome;
+use crate::analysis::{all_outcomes, Outcome};
 use crate::model::company::Company;
-use nalgebra::DMatrix;
+use crate::Portfolio;
+use itertools::Itertools;
+use nalgebra::{DMatrix, DVector};
 use num_traits::pow::Pow;
+use std::collections::HashMap;
 
-/// Calculates the Jacobian given all outcomes, companies and their fractions
-pub fn jacobian(
-    outcomes: &[Outcome],
-    candidates_and_fractions: Vec<(&Company, f64)>,
-) -> DMatrix<f64> {
+/// Tolerance for converging the fraction during Newton-Raphson iteration. Corresponds to 1%, which
+/// is more than enough given that the real uncertainty lies in the input data and not here.
+const FRACTION_TOLERANCE: f64 = 1e-2;
+const MAX_ITER: u32 = 1000;
+
+/// Calculates allocation factors (fractions) for each company based on the Kelly criterion, by
+/// solving N nonlinear equations (N = number of candidates) using the Newton-Raphson algorithm
+pub fn kelly_criterion_allocate(candidates: Vec<Company>) -> Portfolio {
+    // Initial guess for fractions assumes uniform allocation across all companies
+    let n_companies: usize = candidates.len();
+    let uniform_fraction = 1.0 / n_companies as f64;
+    let mut fractions: DVector<f64> = DVector::from_element(candidates.len(), uniform_fraction);
+
+    // Create a portfolio out of candidates, all with the same fractions (which is irrelevant here)
+    let mut portfolio: Portfolio =
+        HashMap::from_iter(candidates.iter().map(|c| ((*c).clone(), uniform_fraction)));
+
+    // Get all outcomes
+    let outcomes: Vec<Outcome> = all_outcomes(&portfolio);
+
+    let mut counter: u32 = 0;
+    loop {
+        // Calculate the Jacobian with the latest fractions for all companies
+        let candidates_and_fractions: Vec<(&Company, f64)> = candidates
+            .iter()
+            .enumerate()
+            .map(|(i, c)| (c, fractions[i]))
+            .collect_vec();
+
+        let jacobian: DMatrix<f64> = kelly_jacobian(&outcomes, &candidates_and_fractions);
+        let right_hand_side: DVector<f64> = -kelly(&outcomes, &candidates_and_fractions);
+
+        // TODO: Error handling
+        let delta_f: DVector<f64> = jacobian.try_inverse().unwrap() * &right_hand_side;
+        fractions += &delta_f;
+
+        // Convergence check (Chebyshev/L-infinity norm)
+        if (delta_f).abs().max() < FRACTION_TOLERANCE {
+            println!("Newton-Raphson loop converged within {counter} iterations");
+            break;
+        }
+
+        // Maximum iterations check in case we diverge
+        if counter >= MAX_ITER {
+            panic!("Convergence not achieved within maximum number of iterations.")
+        }
+
+        counter += 1
+    }
+
+    // Update the fractions and return the portfolio
+    candidates.into_iter().enumerate().for_each(|(i, c)| {
+        portfolio.insert(c, fractions[i]);
+    });
+    portfolio
+}
+
+/// Calculates the Kelly criterion given all outcomes, companies and their fractions
+fn kelly(outcomes: &[Outcome], candidates_and_fractions: &Vec<(&Company, f64)>) -> DVector<f64> {
     let n_companies = candidates_and_fractions.len();
-    let mut jacobian = DMatrix::zeros(n_companies, n_companies);
 
+    let kelly: DVector<f64> = DVector::from_iterator(
+        n_companies,
+        candidates_and_fractions.iter().map(|(company, _)| {
+            outcomes
+                .iter()
+                .map(|o| {
+                    o.probability * o.company_returns[&company.ticker]
+                        / (1.0
+                            + candidates_and_fractions
+                                .iter()
+                                .map(|(c, f)| f * o.company_returns[&c.ticker])
+                                .sum::<f64>())
+                })
+                .sum::<f64>()
+        }),
+    );
+
+    kelly
+}
+
+/// Calculates the Jacobian for the Kelly function given all outcomes, companies and their fractions
+fn kelly_jacobian(
+    outcomes: &[Outcome],
+    candidates_and_fractions: &Vec<(&Company, f64)>,
+) -> DMatrix<f64> {
+    let n_companies: usize = candidates_and_fractions.len();
+    let mut jacobian: DMatrix<f64> = DMatrix::zeros(n_companies, n_companies);
+
+    // Note: Jacobian for this system is symmetric, that's why we loop only over the upper triangle
     for row_index in 0..n_companies {
-        for column_index in 0..n_companies {
+        for column_index in row_index..n_companies {
             let row_company: &Company = candidates_and_fractions[row_index].0;
             let column_company: &Company = candidates_and_fractions[column_index].0;
 
@@ -29,7 +114,11 @@ pub fn jacobian(
                                 .sum::<f64>())
                         .pow(-2)
                 })
-                .sum::<f64>()
+                .sum::<f64>();
+
+            // Set lower triangle. Also overrides the diagonal with the same value unnecessarily,
+            // but seems more elegant compared to an if statement
+            jacobian[(column_index, row_index)] = jacobian[(row_index, column_index)];
         }
     }
 
@@ -39,16 +128,15 @@ pub fn jacobian(
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::model::company;
     use crate::model::company::Company;
     use crate::model::scenario::Scenario;
     use std::collections::HashMap;
 
     const ASSERTION_TOLERANCE: f64 = 1e-6;
 
-    #[test]
-    fn test_jacobian() {
-        let candidates: Vec<Company> = vec![
+    /// Helper function for defining test candidates
+    fn generate_test_candidates() -> Vec<Company> {
+        vec![
             Company {
                 name: "A".to_string(),
                 ticker: "A".to_string(),
@@ -85,10 +173,13 @@ mod test {
                     },
                 ],
             },
-        ];
+        ]
+    }
 
+    /// Helper function for generating test data used in unit tests
+    fn generate_test_data(test_candidates: &Vec<Company>) -> (Vec<(&Company, f64)>, Vec<Outcome>) {
         let candidates_and_fractions: Vec<(&Company, f64)> =
-            vec![(&candidates[0], 0.5), (&candidates[1], 0.5)];
+            vec![(&test_candidates[0], 0.5), (&test_candidates[1], 0.5)];
 
         let outcomes: Vec<Outcome> = vec![
             // Events A1 and B1
@@ -117,7 +208,37 @@ mod test {
             },
         ];
 
-        let jacobian = jacobian(&outcomes, candidates_and_fractions);
+        (candidates_and_fractions, outcomes)
+    }
+
+    #[test]
+    fn test_kelly() {
+        let test_candidates: Vec<Company> = generate_test_candidates();
+        let (candidates_and_fractions, outcomes): (Vec<(&Company, f64)>, Vec<Outcome>) =
+            generate_test_data(&test_candidates);
+
+        let kelly = kelly(&outcomes, &candidates_and_fractions);
+
+        assert!(
+            (kelly[0] - 0.011111111).abs() < ASSERTION_TOLERANCE,
+            "Kelly value at 0 is: {}",
+            kelly[0]
+        );
+
+        assert!(
+            (kelly[1] - 0.166666666).abs() < ASSERTION_TOLERANCE,
+            "Kelly value at 1 is: {}",
+            kelly[1]
+        );
+    }
+
+    #[test]
+    fn test_kelly_jacobian() {
+        let test_candidates: Vec<Company> = generate_test_candidates();
+        let (candidates_and_fractions, outcomes): (Vec<(&Company, f64)>, Vec<Outcome>) =
+            generate_test_data(&test_candidates);
+
+        let jacobian = kelly_jacobian(&outcomes, &candidates_and_fractions);
 
         assert!(
             (jacobian[(0, 0)] + 0.388256908).abs() < ASSERTION_TOLERANCE,
@@ -139,5 +260,16 @@ mod test {
             "Jacobian at (1,1) is: {}",
             jacobian[(1, 1)]
         );
+    }
+
+    #[test]
+    fn test_allocate() {
+        let test_candidates: Vec<Company> = generate_test_candidates();
+        let portfolio: Portfolio = kelly_criterion_allocate(test_candidates);
+
+        let test_candidates_not_moved: Vec<Company> = generate_test_candidates();
+
+        assert!((portfolio[&test_candidates_not_moved[0]] - 0.359266).abs() < ASSERTION_TOLERANCE);
+        assert!((portfolio[&test_candidates_not_moved[1]] - 1.629933).abs() < ASSERTION_TOLERANCE);
     }
 }

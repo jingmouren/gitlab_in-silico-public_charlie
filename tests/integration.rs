@@ -1,4 +1,5 @@
-use portfolio::{allocate, create_candidates, Candidates};
+use portfolio::model::company::Company;
+use portfolio::{allocate, create_candidates};
 
 #[test]
 fn test_create_candidates() {
@@ -27,7 +28,7 @@ fn test_create_candidates() {
                 probability: 0.5
         ";
 
-    let candidates: Candidates = create_candidates(&test_yaml.to_string());
+    let candidates: Vec<Company> = create_candidates(&test_yaml.to_string());
 
     assert_eq!(candidates.len(), 2);
 
@@ -74,8 +75,4 @@ fn test_create_candidates() {
     assert_eq!(candidates[1].scenarios[1].probability, 0.5);
 }
 
-#[test]
-#[should_panic(expected = "not yet implemented")]
-fn test_allocate() {
-    allocate(&vec![]);
-}
+// TODO: Test allocate and analyze

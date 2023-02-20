@@ -10,7 +10,7 @@ pub type Ticker = String;
 pub(crate) const TOLERANCE: f64 = 1e-10;
 
 /// A company with some basic information relevant for investment and a set of possible scenarios
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Company {
     pub name: String,
     pub ticker: Ticker,
