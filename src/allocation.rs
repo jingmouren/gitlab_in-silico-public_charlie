@@ -16,7 +16,7 @@ const MAX_ITER: u32 = 1000;
 pub fn kelly_criterion_allocate(candidates: Vec<Company>) -> Portfolio {
     // Initial guess for fractions assumes uniform allocation across all companies
     let n_companies: usize = candidates.len();
-    let uniform_fraction = 1.0 / n_companies as f64;
+    let uniform_fraction: f64 = 1.0 / n_companies as f64;
     let mut fractions: DVector<f64> = DVector::from_element(candidates.len(), uniform_fraction);
 
     // Create a portfolio out of candidates, all with the same fractions (which is irrelevant here)
@@ -42,7 +42,7 @@ pub fn kelly_criterion_allocate(candidates: Vec<Company>) -> Portfolio {
         let delta_f: DVector<f64> = jacobian.try_inverse().unwrap() * &right_hand_side;
         fractions += &delta_f;
 
-        // Convergence check (Chebyshev/L-infinity norm)
+        // Convergence check (with Chebyshev/L-infinity norm)
         if (delta_f).abs().max() < FRACTION_TOLERANCE {
             println!("Newton-Raphson loop converged within {counter} iterations");
             break;
@@ -68,7 +68,7 @@ pub fn kelly_criterion_allocate(candidates: Vec<Company>) -> Portfolio {
 
     // Normalize the fractions such that their sum is equal to one. This essentially means that we
     // do not want to use leverage.
-    // TODO: Pretty sure that implicitly constraining the with e.g. Lagrange multipliers to have
+    // TODO: Pretty sure that implicitly constraining with e.g. Lagrange multipliers to have
     //  sum(f) = 1 is equivalent to just normalizing after solving, but not 100% sure. Think more.
     let sum_fractions = fractions.iter().sum();
     if sum_fractions > 1.0 {
@@ -295,5 +295,34 @@ mod test {
 
         assert!((portfolio[&test_candidates_not_moved[0]] - 0.180609).abs() < ASSERTION_TOLERANCE);
         assert!((portfolio[&test_candidates_not_moved[1]] - 0.819391).abs() < ASSERTION_TOLERANCE);
+    }
+
+    #[test]
+    #[should_panic(
+        expected = "Found at least one negative fraction, which implies shorting. This is not \
+            supported. Fractions are: "
+    )]
+    fn test_allocate_panics_with_a_candidate_for_shorting() {
+        let mut test_candidates: Vec<Company> = generate_test_candidates();
+        test_candidates.push(Company {
+            name: "Stupid investment".to_string(),
+            ticker: "SI".to_string(),
+            description: "A bet with 50% upside and 100% downside, with probabilities 50-50"
+                .to_string(),
+            market_cap: 1e7,
+            scenarios: vec![
+                Scenario {
+                    thesis: "Ok".to_string(),
+                    intrinsic_value: 1.5e7,
+                    probability: 0.5,
+                },
+                Scenario {
+                    thesis: "Bad".to_string(),
+                    intrinsic_value: 0.0,
+                    probability: 0.5,
+                },
+            ],
+        });
+        kelly_criterion_allocate(test_candidates);
     }
 }
