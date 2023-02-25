@@ -56,10 +56,34 @@ pub fn kelly_criterion_allocate(candidates: Vec<Company>) -> Portfolio {
         counter += 1
     }
 
+    // Check whether we got a negative fraction, which implies shorting. This should not happen if
+    // we filter out candidates with negative expected value (at least I think, I'm not 100% sure
+    // since I didn't work on a mathematical proof: it's just my feeling)
+    if fractions.min() < 0.0 {
+        panic!(
+            "Found at least one negative fraction, which implies shorting. This is not supported. \
+            Fractions are: {fractions}."
+        )
+    }
+
+    // Normalize the fractions such that their sum is equal to one. This essentially means that we
+    // do not want to use leverage.
+    // TODO: Pretty sure that implicitly constraining the with e.g. Lagrange multipliers to have
+    //  sum(f) = 1 is equivalent to just normalizing after solving, but not 100% sure. Think more.
+    let sum_fractions = fractions.iter().sum();
+    if sum_fractions > 1.0 {
+        println!(
+            "Sum of the fractions after the solution is {sum_fractions}, which is greater than \
+            one. This implies use of leverage. Normalizing the fractions to avoid leverage."
+        );
+        fractions /= sum_fractions;
+    }
+
     // Update the fractions and return the portfolio
     candidates.into_iter().enumerate().for_each(|(i, c)| {
         portfolio.insert(c, fractions[i]);
     });
+
     portfolio
 }
 
@@ -269,7 +293,7 @@ mod test {
 
         let test_candidates_not_moved: Vec<Company> = generate_test_candidates();
 
-        assert!((portfolio[&test_candidates_not_moved[0]] - 0.359266).abs() < ASSERTION_TOLERANCE);
-        assert!((portfolio[&test_candidates_not_moved[1]] - 1.629933).abs() < ASSERTION_TOLERANCE);
+        assert!((portfolio[&test_candidates_not_moved[0]] - 0.180609).abs() < ASSERTION_TOLERANCE);
+        assert!((portfolio[&test_candidates_not_moved[1]] - 0.819391).abs() < ASSERTION_TOLERANCE);
     }
 }
