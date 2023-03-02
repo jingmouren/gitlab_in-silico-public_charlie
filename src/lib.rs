@@ -30,10 +30,17 @@ pub fn allocate(mut candidates: Vec<Company>) -> Portfolio {
             .sum::<f64>()
             > 0.0
     });
-    kelly_criterion_allocate(candidates)
+
+    let portfolio = kelly_criterion_allocate(candidates);
+
+    portfolio
+        .iter()
+        .for_each(|(c, f)| println!("Company: {}, fraction: {:.1}%", c.name, 100.0 * f));
+
+    portfolio
 }
 
-/// Prints useful information about the portfolio
+/// Calculates and prints useful information about the portfolio
 pub fn analyse(portfolio: &Portfolio) {
     expected_return(portfolio);
 
