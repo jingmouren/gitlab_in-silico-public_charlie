@@ -1,6 +1,5 @@
-use crate::model::company::{Company, Ticker};
+use crate::model::company::Ticker;
 use crate::Portfolio;
-use itertools::Itertools;
 use ordered_float::OrderedFloat;
 use std::collections::HashMap;
 
@@ -16,7 +15,10 @@ pub struct Outcome {
 pub fn all_outcomes(portfolio: &Portfolio) -> Vec<Outcome> {
     // Number of different outcomes is a product of number of all scenarios for all companies
     let n_outcomes = if !portfolio.is_empty() {
-        portfolio.keys().map(|c| c.scenarios.len()).product()
+        portfolio
+            .iter()
+            .map(|pc| pc.company.scenarios.len())
+            .product()
     } else {
         0
     };
@@ -29,22 +31,15 @@ pub fn all_outcomes(portfolio: &Portfolio) -> Vec<Outcome> {
         )
     }
 
-    // Collect relevant portfolio data into a sorted Vec to have reproducibility in tests
-    let companies_and_fractions: Vec<(&Company, f64)> = portfolio
-        .iter()
-        .map(|(c, f)| (c, *f))
-        .sorted_by(|(c1, _), (c2, _)| c1.ticker.cmp(&c2.ticker))
-        .collect();
-
     // Mutable data that's populated/modified within the loop below
     // 1. Vectors for all outcomes
     let mut outcomes: Vec<Outcome> = Vec::with_capacity(n_outcomes);
 
     // 2. Helper vectors keeping track of current indices for scenarios of all companies
-    let mut scenario_indices: Vec<usize> = vec![0; companies_and_fractions.len()];
-    let n_scenarios: Vec<usize> = companies_and_fractions
+    let mut scenario_indices: Vec<usize> = vec![0; portfolio.len()];
+    let n_scenarios: Vec<usize> = portfolio
         .iter()
-        .map(|(c, _)| c.scenarios.len())
+        .map(|pc| pc.company.scenarios.len())
         .collect();
 
     // Start filling in outcomes until all are collected
@@ -57,20 +52,18 @@ pub fn all_outcomes(portfolio: &Portfolio) -> Vec<Outcome> {
             company_returns: HashMap::with_capacity(portfolio.len()),
         };
 
-        companies_and_fractions
-            .iter()
-            .enumerate()
-            .for_each(|(ticker_id, (c, f))| {
-                let scenario_id = scenario_indices[ticker_id];
-                let s = &c.scenarios[scenario_id];
+        portfolio.iter().enumerate().for_each(|(ticker_id, pc)| {
+            let scenario_id = scenario_indices[ticker_id];
+            let c = &pc.company;
+            let s = &c.scenarios[scenario_id];
 
-                let company_return = (s.intrinsic_value - c.market_cap) / c.market_cap;
-                outcome.weighted_return += f * company_return;
-                outcome.probability *= s.probability;
-                outcome
-                    .company_returns
-                    .insert(c.ticker.clone(), company_return);
-            });
+            let company_return = (s.intrinsic_value - c.market_cap) / c.market_cap;
+            outcome.weighted_return += pc.fraction * company_return;
+            outcome.probability *= s.probability;
+            outcome
+                .company_returns
+                .insert(c.ticker.clone(), company_return);
+        });
 
         // 2. Append the calculated outcome to the list of outcomes
         outcomes.push(outcome);
@@ -97,16 +90,20 @@ pub fn all_outcomes(portfolio: &Portfolio) -> Vec<Outcome> {
 pub fn expected_return(portfolio: &Portfolio) -> f64 {
     let expected_return: f64 = portfolio
         .iter()
-        .map(|(c, f)| {
-            c.scenarios
+        .map(|pc| {
+            let market_cap = pc.company.market_cap;
+            pc.company
+                .scenarios
                 .iter()
-                .map(|s| f * s.probability * (s.intrinsic_value - c.market_cap) / c.market_cap)
+                .map(|s| {
+                    pc.fraction * s.probability * (s.intrinsic_value - market_cap) / market_cap
+                })
                 .sum::<f64>()
         })
         .sum();
 
     println!(
-        "For every 1 dollar invested, we expect to end up with {} dollars",
+        "For every 1 dollar invested, we expect to end up with {:.2} dollars",
         1.0 + expected_return
     );
 
@@ -121,7 +118,7 @@ pub fn worst_case_outcome(outcomes: &[Outcome]) -> &Outcome {
         .unwrap(); // TODO: Handle errors
 
     println!(
-        "Worst case outcome implies permanent loss of {}% of invested assets with probability {}%",
+        "Worst case outcome implies permanent loss of {:.1}% of invested assets with probability {:.1}%",
         100.0 * worst_case_outcome.weighted_return,
         100.0 * worst_case_outcome.probability
     );
@@ -137,7 +134,10 @@ pub fn cumulative_probability_of_loss(outcomes: &[Outcome]) -> f64 {
         .map(|o| o.probability)
         .sum();
 
-    println!("Cumulative probability of loss of capital is {cumulative_probability_of_loss}");
+    println!(
+        "Cumulative probability of loss of capital is {:.3}%",
+        100.0 * cumulative_probability_of_loss
+    );
 
     cumulative_probability_of_loss
 }
@@ -148,7 +148,7 @@ mod test {
     use crate::model::company;
     use crate::model::company::Company;
     use crate::model::scenario::Scenario;
-    use crate::HashMap;
+    use crate::PortfolioCompany;
 
     impl PartialEq<Self> for Outcome {
         fn eq(&self, other: &Self) -> bool {
@@ -161,93 +161,88 @@ mod test {
     }
 
     /// A helper function that creates portfolio with three assets used in a couple of tests
-    fn get_test_portfolio_with_three_assets() -> HashMap<Company, f64> {
-        let mut test_portfolio = Portfolio::new();
-
-        // Unbiased coin flip with 20% allocation
-        test_portfolio.insert(
-            Company {
-                name: "Fair coin flip".to_string(),
-                ticker: "A".to_string(),
-                description: "Something we should never invest into".to_string(),
-                market_cap: 1e6,
-                scenarios: vec![
-                    Scenario {
-                        thesis: "Head".to_string(),
-                        intrinsic_value: 2e6,
-                        probability: 0.5,
-                    },
-                    Scenario {
-                        thesis: "Tail".to_string(),
-                        intrinsic_value: 0.0,
-                        probability: 0.5,
-                    },
-                ],
+    fn get_test_portfolio_with_three_assets() -> Portfolio {
+        let test_portfolio: Portfolio = vec![
+            // Fair coin flip
+            PortfolioCompany {
+                company: Company {
+                    name: "Fair coin flip".to_string(),
+                    ticker: "A".to_string(),
+                    description: "Something we should never invest into".to_string(),
+                    market_cap: 1e6,
+                    scenarios: vec![
+                        Scenario {
+                            thesis: "Head".to_string(),
+                            intrinsic_value: 2e6,
+                            probability: 0.5,
+                        },
+                        Scenario {
+                            thesis: "Tail".to_string(),
+                            intrinsic_value: 0.0,
+                            probability: 0.5,
+                        },
+                    ],
+                },
+                fraction: 0.2,
             },
-            0.2,
-        );
-
-        // Biased coin flip with 30% allocation
-        test_portfolio.insert(
-            Company {
-                name: "Biased coin flip".to_string(),
-                ticker: "B".to_string(),
-                description: "A not-so-fair coin flip".to_string(),
-                market_cap: 1e6,
-                scenarios: vec![
-                    Scenario {
-                        thesis: "Head".to_string(),
-                        intrinsic_value: 2e6,
-                        probability: 0.6,
-                    },
-                    Scenario {
-                        thesis: "Tail".to_string(),
-                        intrinsic_value: 0.0,
-                        probability: 0.4,
-                    },
-                ],
+            // Biased coin flip with 30% allocation
+            PortfolioCompany {
+                company: Company {
+                    name: "Biased coin flip".to_string(),
+                    ticker: "B".to_string(),
+                    description: "A not-so-fair coin flip".to_string(),
+                    market_cap: 1e6,
+                    scenarios: vec![
+                        Scenario {
+                            thesis: "Head".to_string(),
+                            intrinsic_value: 2e6,
+                            probability: 0.6,
+                        },
+                        Scenario {
+                            thesis: "Tail".to_string(),
+                            intrinsic_value: 0.0,
+                            probability: 0.4,
+                        },
+                    ],
+                },
+                fraction: 0.3,
             },
-            0.3,
-        );
-
-        // Something with only upside 50% allocation
-        test_portfolio.insert(
-            Company {
-                name: "Something with only upside".to_string(),
-                ticker: "C".to_string(),
-                description: "Shouldn't lose money here because of xyz".to_string(),
-                market_cap: 1e8,
-                scenarios: vec![
-                    Scenario {
-                        thesis: "Double".to_string(),
-                        intrinsic_value: 2e8,
-                        probability: 0.3,
-                    },
-                    Scenario {
-                        thesis: "50 percent up".to_string(),
-                        intrinsic_value: 1.5e8,
-                        probability: 0.3,
-                    },
-                    Scenario {
-                        thesis: "Same as now".to_string(),
-                        intrinsic_value: 1e8,
-                        probability: 0.4,
-                    },
-                ],
+            // Something with only upside 50% allocation
+            PortfolioCompany {
+                company: Company {
+                    name: "Something with only upside".to_string(),
+                    ticker: "C".to_string(),
+                    description: "Shouldn't lose money here because of xyz".to_string(),
+                    market_cap: 1e8,
+                    scenarios: vec![
+                        Scenario {
+                            thesis: "Double".to_string(),
+                            intrinsic_value: 2e8,
+                            probability: 0.3,
+                        },
+                        Scenario {
+                            thesis: "50 percent up".to_string(),
+                            intrinsic_value: 1.5e8,
+                            probability: 0.3,
+                        },
+                        Scenario {
+                            thesis: "Same as now".to_string(),
+                            intrinsic_value: 1e8,
+                            probability: 0.4,
+                        },
+                    ],
+                },
+                fraction: 0.5,
             },
-            0.5,
-        );
+        ];
 
         test_portfolio
     }
 
     #[test]
     fn test_expected_value_single_fair_coin_flip() {
-        let mut test_portfolio = Portfolio::new();
-
-        // Unbiased coin flip with 100% allocation
-        test_portfolio.insert(
-            Company {
+        let test_portfolio: Portfolio = vec![PortfolioCompany {
+            company: Company {
                 name: "Fair coin flip".to_string(),
                 ticker: "A".to_string(),
                 description: "Something we should never invest into".to_string(),
@@ -265,19 +260,16 @@ mod test {
                     },
                 ],
             },
-            1.0,
-        );
+            fraction: 1.0,
+        }];
 
         assert!(expected_return(&test_portfolio) < company::TOLERANCE);
     }
 
     #[test]
     fn test_expected_value_single_biased_coin_flip() {
-        let mut test_portfolio = Portfolio::new();
-
-        // Biased coin flip with 100% allocation
-        test_portfolio.insert(
-            Company {
+        let test_portfolio: Portfolio = vec![PortfolioCompany {
+            company: Company {
                 name: "Biased coin flip".to_string(),
                 ticker: "B".to_string(),
                 description: "A not-so-fair coin flip".to_string(),
@@ -295,8 +287,8 @@ mod test {
                     },
                 ],
             },
-            1.0,
-        );
+            fraction: 1.0,
+        }];
 
         assert!((expected_return(&test_portfolio) - 0.6).abs() < company::TOLERANCE);
     }
@@ -321,10 +313,10 @@ mod test {
     #[should_panic(expected = "You have 65536 different outcomes for your portfolio.")]
     fn test_all_outcomes_too_many_assets_and_scenarios() {
         // Create a portfolio with 16 companies, each with 2 scenarios
-        let mut test_portfolio = Portfolio::new();
+        let mut test_portfolio: Portfolio = vec![];
         for i in 0..16 {
-            test_portfolio.insert(
-                Company {
+            test_portfolio.push(PortfolioCompany {
+                company: Company {
                     name: format!("{i}"),
                     ticker: format!("{i}"),
                     description: format!("{i}"),
@@ -342,8 +334,8 @@ mod test {
                         },
                     ],
                 },
-                0.0625,
-            );
+                fraction: 0.0625,
+            });
         }
 
         // Should fail because there's more than 50000 outcomes
@@ -365,7 +357,7 @@ mod test {
                         ("A".to_string(), 1.0),
                         ("B".to_string(), 1.0),
                         ("C".to_string(), 1.0),
-                    ])
+                    ]),
                 },
                 Outcome {
                     weighted_return: 0.6,
@@ -374,7 +366,7 @@ mod test {
                         ("A".to_string(), -1.0),
                         ("B".to_string(), 1.0),
                         ("C".to_string(), 1.0),
-                    ])
+                    ]),
                 },
                 Outcome {
                     weighted_return: 0.4,
@@ -383,7 +375,7 @@ mod test {
                         ("A".to_string(), 1.0),
                         ("B".to_string(), -1.0),
                         ("C".to_string(), 1.0),
-                    ])
+                    ]),
                 },
                 Outcome {
                     weighted_return: 0.0,
@@ -392,7 +384,7 @@ mod test {
                         ("A".to_string(), -1.0),
                         ("B".to_string(), -1.0),
                         ("C".to_string(), 1.0),
-                    ])
+                    ]),
                 },
                 Outcome {
                     weighted_return: 0.75,
@@ -401,7 +393,7 @@ mod test {
                         ("A".to_string(), 1.0),
                         ("B".to_string(), 1.0),
                         ("C".to_string(), 0.5),
-                    ])
+                    ]),
                 },
                 Outcome {
                     weighted_return: 0.35,
@@ -410,7 +402,7 @@ mod test {
                         ("A".to_string(), -1.0),
                         ("B".to_string(), 1.0),
                         ("C".to_string(), 0.5),
-                    ])
+                    ]),
                 },
                 Outcome {
                     weighted_return: 0.15,
@@ -419,7 +411,7 @@ mod test {
                         ("A".to_string(), 1.0),
                         ("B".to_string(), -1.0),
                         ("C".to_string(), 0.5),
-                    ])
+                    ]),
                 },
                 Outcome {
                     weighted_return: -0.25,
@@ -428,7 +420,7 @@ mod test {
                         ("A".to_string(), -1.0),
                         ("B".to_string(), -1.0),
                         ("C".to_string(), 0.5),
-                    ])
+                    ]),
                 },
                 Outcome {
                     weighted_return: 0.5,
@@ -437,7 +429,7 @@ mod test {
                         ("A".to_string(), 1.0),
                         ("B".to_string(), 1.0),
                         ("C".to_string(), 0.0),
-                    ])
+                    ]),
                 },
                 Outcome {
                     weighted_return: 0.1,
@@ -446,7 +438,7 @@ mod test {
                         ("A".to_string(), -1.0),
                         ("B".to_string(), 1.0),
                         ("C".to_string(), 0.0),
-                    ])
+                    ]),
                 },
                 Outcome {
                     weighted_return: -0.1,
@@ -455,7 +447,7 @@ mod test {
                         ("A".to_string(), 1.0),
                         ("B".to_string(), -1.0),
                         ("C".to_string(), 0.0),
-                    ])
+                    ]),
                 },
                 Outcome {
                     weighted_return: -0.5,
@@ -464,7 +456,7 @@ mod test {
                         ("A".to_string(), -1.0),
                         ("B".to_string(), -1.0),
                         ("C".to_string(), 0.0),
-                    ])
+                    ]),
                 },
             ]
         )
@@ -485,7 +477,7 @@ mod test {
                     ("A".to_string(), -1.0),
                     ("B".to_string(), -1.0),
                     ("C".to_string(), 0.0),
-                ])
+                ]),
             }
         )
     }
