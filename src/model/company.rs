@@ -43,6 +43,7 @@ impl Company {
         self.validate_at_least_one_scenario();
         self.validate_all_scenarios_unique();
         self.validate_probabilities_sum_up_to_one();
+        self.validate_all_scenarios();
     }
 
     /// Panics if all scenarios are not unique
@@ -78,6 +79,11 @@ impl Company {
         if (sum - 1.0).abs() > TOLERANCE {
             panic!("Probabilities of all scenarios do not sum up to 1. Sum = {sum}.")
         }
+    }
+
+    /// Validate all scenarios
+    fn validate_all_scenarios(&self) {
+        self.scenarios.iter().for_each(|s| s.validate())
     }
 }
 
@@ -159,7 +165,7 @@ mod test {
 
     #[test]
     #[should_panic(expected = "No scenarios found for Some Company with ticker SC.")]
-    fn test_having_non_unique_scenarios_panics() {
+    fn test_having_no_scenarios_panics() {
         let test_company: Company = Company {
             name: "Some Company".to_string(),
             ticker: "SC".to_string(),
@@ -173,7 +179,7 @@ mod test {
 
     #[test]
     #[should_panic(expected = "Not all scenarios are unique (have a unique thesis).")]
-    fn test_having_no_scenarios_panics() {
+    fn test_having_non_unique_scenarios_panics() {
         let test_company: Company = Company {
             name: "Some Company".to_string(),
             ticker: "SC".to_string(),

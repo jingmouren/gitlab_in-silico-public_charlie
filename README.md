@@ -8,8 +8,10 @@ Tools to help with capital allocation process.
 - [x] Calculation of probability of loss of capital
 - [x] Improve test coverage of company_returns field
 - [x] Allocation via Kelly's formula for multiple investments
-- [ ] Integration tests
+- [x] Integration tests
+- [ ] Refactor validation
 - [ ] Logging instead of printing 
+- [ ] API trait with controller and http client
 - [ ] Command line interface
 - [ ] Error handling
 - [ ] Server

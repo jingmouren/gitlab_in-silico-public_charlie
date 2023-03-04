@@ -29,7 +29,6 @@ impl Hash for Scenario {
 impl Scenario {
     /// Does all validations
     pub fn validate(&self) {
-        self.validate_intrinsic_value();
         self.validate_probability_bounds();
     }
 
@@ -47,19 +46,6 @@ impl Scenario {
             panic!(
                 "Probability greater than 1 is not allowed. Probability: {}",
                 self.probability
-            )
-        }
-    }
-
-    /// Panics if we provide intrinsic value smaller than 100000 to indicate that this is the value
-    /// of the whole business, and not value per share
-    /// TODO: Convert panic to recoverable errors that can be handled
-    fn validate_intrinsic_value(&self) {
-        if self.intrinsic_value < 1e5 {
-            panic!(
-                "Intrinsic value of {} is smaller than 100 000. Intrinsic value represents \
-                the value of the whole business, and not value per share.",
-                self.intrinsic_value
             )
         }
     }
@@ -118,17 +104,6 @@ mod test {
             thesis: "Awesome thesis".to_string(),
             intrinsic_value: 1e10,
             probability: 1.2,
-        };
-        test_scenario.validate();
-    }
-
-    #[test]
-    #[should_panic(expected = "Intrinsic value of 42 is smaller than 100 000.")]
-    fn test_low_intrinsic_value_panics() {
-        let test_scenario = Scenario {
-            thesis: "Awesome thesis".to_string(),
-            intrinsic_value: 42.0,
-            probability: 0.5,
         };
         test_scenario.validate();
     }

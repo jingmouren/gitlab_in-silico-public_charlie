@@ -20,6 +20,7 @@ pub struct PortfolioCompany {
 /// Creates a vector of candidate companies from YAML
 pub fn create_candidates(yaml_string: &str) -> Vec<Company> {
     let candidates: Vec<Company> = serde_yaml::from_str(yaml_string).unwrap();
+    candidates.iter().for_each(|c| c.validate());
     candidates
 }
 
