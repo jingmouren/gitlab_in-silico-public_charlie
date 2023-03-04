@@ -9,12 +9,13 @@ Tools to help with capital allocation process.
 - [x] Improve test coverage of company_returns field
 - [x] Allocation via Kelly's formula for multiple investments
 - [x] Integration tests
+- [x] Logging instead of printing
 - [ ] Refactor validation
-- [ ] Logging instead of printing 
 - [ ] API trait with controller and http client
 - [ ] Command line interface
 - [ ] Error handling
 - [ ] Server
+
 
 ## Investment process
 

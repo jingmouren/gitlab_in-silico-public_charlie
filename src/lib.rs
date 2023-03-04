@@ -5,6 +5,7 @@ pub mod model;
 use crate::allocation::kelly_criterion_allocate;
 use crate::analysis::{all_outcomes, worst_case_outcome};
 use crate::analysis::{cumulative_probability_of_loss, expected_return};
+use log::info;
 use crate::model::company::Company;
 
 /// Portfolio is a vector of PortfolioCompany objects
@@ -44,7 +45,7 @@ pub fn allocate(candidates: Vec<Company>) -> Portfolio {
     let portfolio = kelly_criterion_allocate(filtered_candidates);
 
     portfolio.iter().for_each(|pc| {
-        println!(
+        info!(
             "Company: {}, fraction: {:.1}%",
             pc.company.name,
             100.0 * pc.fraction

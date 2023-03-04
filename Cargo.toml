@@ -15,8 +15,10 @@ path = "src/lib.rs"
 
 [dependencies]
 itertools = "0.10.5"
+log = "0.4.17"
 nalgebra = "0.32.1"
 num-traits = "0.2.15"
 ordered-float = "3.4.0"
 serde = { version = "1.0.152", features = ["derive"] }
 serde_yaml = "0.9.17"
+simple_logger = "4.0.0"

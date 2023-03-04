@@ -1,3 +1,4 @@
+use simple_logger::SimpleLogger;
 use portfolio::model::company::Company;
 use portfolio::{allocate, analyse, create_candidates, Portfolio};
 
@@ -178,6 +179,9 @@ fn test_create_candidates() {
 
 #[test]
 fn test_allocate_and_analyze() {
+    // Initialize logger
+    SimpleLogger::new().init().unwrap();
+
     // TODO: Add assertions after refactoring the data classes and interfaces
     let candidates: Vec<Company> = create_candidates(&TEST_YAML.to_string());
 

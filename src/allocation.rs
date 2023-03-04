@@ -3,6 +3,7 @@ use crate::model::company::Company;
 use crate::{Portfolio, PortfolioCompany};
 use nalgebra::{DMatrix, DVector};
 use num_traits::pow::Pow;
+use log::info;
 
 /// Tolerance for converging the fraction during Newton-Raphson iteration. Corresponds to 1%, which
 /// is more than enough given that the real uncertainty lies in the input data and not here.
@@ -47,7 +48,7 @@ pub fn kelly_criterion_allocate(candidates: Vec<Company>) -> Portfolio {
 
         // Convergence check (with Chebyshev/L-infinity norm)
         if delta_f.abs().max() < FRACTION_TOLERANCE {
-            println!("Newton-Raphson loop converged within {counter} iterations");
+            info!("Newton-Raphson loop converged within {counter} iterations");
             break;
         }
 
@@ -75,7 +76,7 @@ pub fn kelly_criterion_allocate(candidates: Vec<Company>) -> Portfolio {
     //  sum(f) = 1 is equivalent to just normalizing after solving, but not 100% sure. Think more.
     let sum_fractions = fractions.sum();
     if sum_fractions > 1.0 {
-        println!(
+        info!(
             "Sum of the fractions after the solution is {sum_fractions}, which is greater than \
             one. This implies use of leverage. Normalizing the fractions to avoid leverage."
         );

@@ -1,6 +1,7 @@
 use crate::model::company::Ticker;
 use crate::Portfolio;
 use ordered_float::OrderedFloat;
+use log::info;
 use std::collections::HashMap;
 
 /// An outcome consists of its probability and portfolio return
@@ -102,7 +103,7 @@ pub fn expected_return(portfolio: &Portfolio) -> f64 {
         })
         .sum();
 
-    println!(
+    info!(
         "For every 1 dollar invested, we expect to end up with {:.2} dollars",
         1.0 + expected_return
     );
@@ -117,8 +118,8 @@ pub fn worst_case_outcome(outcomes: &[Outcome]) -> &Outcome {
         .min_by_key(|o| OrderedFloat(o.weighted_return))
         .unwrap(); // TODO: Handle errors
 
-    println!(
-        "Worst case outcome implies permanent loss of {:.1}% of invested assets with probability {:.1}%",
+    info!(
+        "Worst case outcome implies permanent loss of {:.1}% of invested assets with probability {:.6}%",
         100.0 * worst_case_outcome.weighted_return,
         100.0 * worst_case_outcome.probability
     );
@@ -134,7 +135,7 @@ pub fn cumulative_probability_of_loss(outcomes: &[Outcome]) -> f64 {
         .map(|o| o.probability)
         .sum();
 
-    println!(
+    info!(
         "Cumulative probability of loss of capital is {:.3}%",
         100.0 * cumulative_probability_of_loss
     );
