@@ -3,7 +3,7 @@ mod analysis;
 pub mod model;
 pub mod validation;
 
-use crate::allocation::kelly_criterion_allocate;
+use crate::allocation::{kelly_allocate, MAX_ITER};
 use crate::analysis::{all_outcomes, worst_case_outcome};
 use crate::analysis::{cumulative_probability_of_loss, expected_return};
 use crate::model::company::Company;
@@ -65,7 +65,7 @@ pub fn allocate(candidates: Vec<Company>) -> Portfolio {
     //  1. Add info statement for filtered candidates
     //  2. Filter also the "perfect" without any downside
 
-    let portfolio = kelly_criterion_allocate(filtered_candidates);
+    let portfolio = kelly_allocate(filtered_candidates, MAX_ITER);
 
     portfolio.iter().for_each(|pc| {
         info!(

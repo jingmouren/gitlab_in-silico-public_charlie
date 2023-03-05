@@ -8,11 +8,11 @@ use num_traits::pow::Pow;
 /// Tolerance for converging the fraction during Newton-Raphson iteration. Corresponds to 1%, which
 /// is more than enough given that the real uncertainty lies in the input data and not here.
 const FRACTION_TOLERANCE: f64 = 1e-2;
-const MAX_ITER: u32 = 1000;
+pub(crate) const MAX_ITER: u32 = 1000;
 
 /// Calculates allocation factors (fractions) for each company based on the Kelly criterion, by
 /// solving N nonlinear equations (N = number of candidates) using the Newton-Raphson algorithm
-pub fn kelly_criterion_allocate(candidates: Vec<Company>) -> Portfolio {
+pub fn kelly_allocate(candidates: Vec<Company>, max_iter: u32) -> Portfolio {
     // Initial guess for fractions assumes uniform allocation across all companies
     let n_companies: usize = candidates.len();
     let uniform_fraction: f64 = 1.0 / n_companies as f64;
@@ -38,8 +38,8 @@ pub fn kelly_criterion_allocate(candidates: Vec<Company>) -> Portfolio {
             .for_each(|(i, pc)| pc.fraction = fractions[i]);
 
         // Calculate the Jacobian with the latest fractions for all companies
-        let jacobian: DMatrix<f64> = kelly_jacobian(&outcomes, &portfolio);
-        let right_hand_side: DVector<f64> = -kelly(&outcomes, &portfolio);
+        let jacobian: DMatrix<f64> = kelly_criterion_jacobian(&outcomes, &portfolio);
+        let right_hand_side: DVector<f64> = -kelly_criterion(&outcomes, &portfolio);
 
         // TODO: Error handling
         // Solve for delta_f and update the fractions in the portfolio
@@ -56,8 +56,8 @@ pub fn kelly_criterion_allocate(candidates: Vec<Company>) -> Portfolio {
         }
 
         // Maximum iterations check in case we diverge
-        if counter >= MAX_ITER {
-            panic!("Convergence not achieved within maximum number of iterations.")
+        if counter >= max_iter {
+            panic!("Convergence not achieved within {max_iter} iterations.")
         }
 
         counter += 1
@@ -95,7 +95,7 @@ pub fn kelly_criterion_allocate(candidates: Vec<Company>) -> Portfolio {
 }
 
 /// Calculates the Kelly criterion given all outcomes and portfolio
-fn kelly(outcomes: &[Outcome], portfolio: &Portfolio) -> DVector<f64> {
+fn kelly_criterion(outcomes: &[Outcome], portfolio: &Portfolio) -> DVector<f64> {
     let n_companies = portfolio.len();
 
     let kelly: DVector<f64> = DVector::from_iterator(
@@ -119,7 +119,7 @@ fn kelly(outcomes: &[Outcome], portfolio: &Portfolio) -> DVector<f64> {
 }
 
 /// Calculates the Jacobian for the Kelly function given all outcomes and portfolio
-fn kelly_jacobian(outcomes: &[Outcome], portfolio: &Portfolio) -> DMatrix<f64> {
+fn kelly_criterion_jacobian(outcomes: &[Outcome], portfolio: &Portfolio) -> DMatrix<f64> {
     let n_companies: usize = portfolio.len();
     let mut jacobian: DMatrix<f64> = DMatrix::zeros(n_companies, n_companies);
 
@@ -252,7 +252,7 @@ mod test {
         let test_candidates: Vec<Company> = generate_test_candidates();
         let (portfolio, outcomes): (Portfolio, Vec<Outcome>) = generate_test_data(&test_candidates);
 
-        let kelly = kelly(&outcomes, &portfolio);
+        let kelly = kelly_criterion(&outcomes, &portfolio);
 
         assert!(
             (kelly[0] - 0.011111111).abs() < ASSERTION_TOLERANCE,
@@ -272,7 +272,7 @@ mod test {
         let test_candidates: Vec<Company> = generate_test_candidates();
         let (portfolio, outcomes): (Portfolio, Vec<Outcome>) = generate_test_data(&test_candidates);
 
-        let jacobian = kelly_jacobian(&outcomes, &portfolio);
+        let jacobian = kelly_criterion_jacobian(&outcomes, &portfolio);
 
         assert!(
             (jacobian[(0, 0)] + 0.388256908).abs() < ASSERTION_TOLERANCE,
@@ -299,8 +299,9 @@ mod test {
     #[test]
     fn test_allocate() {
         let test_candidates: Vec<Company> = generate_test_candidates();
-        let portfolio: Portfolio = kelly_criterion_allocate(test_candidates);
+        let portfolio: Portfolio = kelly_allocate(test_candidates, MAX_ITER);
 
+        assert_eq!(portfolio.len(), 2);
         assert!(
             (portfolio[0].fraction - 0.180609).abs() < ASSERTION_TOLERANCE,
             "Expected close to 0.180609, got {}",
@@ -311,6 +312,44 @@ mod test {
             "Expected close to 0.819391, got {}",
             portfolio[1].fraction
         );
+    }
+
+    #[test]
+    fn test_allocate_for_a_single_company() {
+        let test_candidates: Vec<Company> = vec![Company {
+            name: "A".to_string(),
+            ticker: "A".to_string(),
+            description: "A bet with 100% upside and 50% downside, with probabilities 50-50"
+                .to_string(),
+            market_cap: 1e7,
+            scenarios: vec![
+                Scenario {
+                    thesis: "A1".to_string(),
+                    intrinsic_value: 2e7,
+                    probability: 0.5,
+                },
+                Scenario {
+                    thesis: "A2".to_string(),
+                    intrinsic_value: 5e6,
+                    probability: 0.5,
+                },
+            ],
+        }];
+
+        let portfolio: Portfolio = kelly_allocate(test_candidates, MAX_ITER);
+
+        assert_eq!(portfolio.len(), 1);
+        assert!(
+            (portfolio[0].fraction - 0.5).abs() < ASSERTION_TOLERANCE,
+            "Expected close to 0.5, got {}",
+            portfolio[0].fraction
+        );
+    }
+
+    #[test]
+    #[should_panic(expected = "Convergence not achieved within 1 iterations.")]
+    fn test_allocate_panics_when_maximum_iterations_exceeded() {
+        kelly_allocate(generate_test_candidates(), 1);
     }
 
     #[test]
@@ -339,7 +378,7 @@ mod test {
                 },
             ],
         });
-        kelly_criterion_allocate(test_candidates);
+        kelly_allocate(test_candidates, MAX_ITER);
     }
 
     #[test]
@@ -364,6 +403,6 @@ mod test {
                 },
             ],
         });
-        kelly_criterion_allocate(test_candidates);
+        kelly_allocate(test_candidates, MAX_ITER);
     }
 }
