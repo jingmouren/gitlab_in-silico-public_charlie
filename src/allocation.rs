@@ -1,9 +1,9 @@
 use crate::analysis::{all_outcomes, Outcome};
 use crate::model::company::Company;
 use crate::{Portfolio, PortfolioCompany};
+use log::info;
 use nalgebra::{DMatrix, DVector};
 use num_traits::pow::Pow;
-use log::info;
 
 /// Tolerance for converging the fraction during Newton-Raphson iteration. Corresponds to 1%, which
 /// is more than enough given that the real uncertainty lies in the input data and not here.
@@ -43,7 +43,10 @@ pub fn kelly_criterion_allocate(candidates: Vec<Company>) -> Portfolio {
 
         // TODO: Error handling
         // Solve for delta_f and update the fractions in the portfolio
-        let delta_f: DVector<f64> = jacobian.try_inverse().unwrap() * &right_hand_side;
+        let delta_f: DVector<f64> = jacobian
+            .try_inverse()
+            .expect("Failed to invert the Jacobian.")
+            * &right_hand_side;
         fractions += &delta_f;
 
         // Convergence check (with Chebyshev/L-infinity norm)
@@ -332,6 +335,31 @@ mod test {
                 Scenario {
                     thesis: "Bad".to_string(),
                     intrinsic_value: 0.0,
+                    probability: 0.5,
+                },
+            ],
+        });
+        kelly_criterion_allocate(test_candidates);
+    }
+
+    #[test]
+    #[should_panic(expected = "Failed to invert the Jacobian.")]
+    fn test_allocate_panics_with_a_candidate_with_no_downside() {
+        let mut test_candidates: Vec<Company> = generate_test_candidates();
+        test_candidates.push(Company {
+            name: "Best investment that implies infinite bet".to_string(),
+            ticker: "BI".to_string(),
+            description: "A bet with 100% upside and no downside".to_string(),
+            market_cap: 1.0e7,
+            scenarios: vec![
+                Scenario {
+                    thesis: "100 percent upside".to_string(),
+                    intrinsic_value: 2.0e7,
+                    probability: 0.5,
+                },
+                Scenario {
+                    thesis: "No downside".to_string(),
+                    intrinsic_value: 1.0e7,
                     probability: 0.5,
                 },
             ],

@@ -1,6 +1,6 @@
-use simple_logger::SimpleLogger;
 use portfolio::model::company::Company;
 use portfolio::{allocate, analyse, create_candidates, Portfolio};
+use simple_logger::SimpleLogger;
 
 const TEST_YAML: &str = "
           - name: A

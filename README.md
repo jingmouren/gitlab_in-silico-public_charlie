@@ -10,7 +10,7 @@ Tools to help with capital allocation process.
 - [x] Allocation via Kelly's formula for multiple investments
 - [x] Integration tests
 - [x] Logging instead of printing
-- [ ] Refactor validation
+- [x] Refactor validation
 - [ ] API trait with controller and http client
 - [ ] Command line interface
 - [ ] Error handling

@@ -1,7 +1,7 @@
 use crate::model::company::Ticker;
 use crate::Portfolio;
-use ordered_float::OrderedFloat;
 use log::info;
+use ordered_float::OrderedFloat;
 use std::collections::HashMap;
 
 /// An outcome consists of its probability and portfolio return

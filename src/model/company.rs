@@ -3,6 +3,8 @@ use std::collections::HashSet;
 use std::hash::{Hash, Hasher};
 
 use crate::model::scenario::Scenario;
+use crate::validation::result::{Problem, Severity, ValidationResult};
+use crate::validation::validate::Validate;
 
 pub type Ticker = String;
 
@@ -37,53 +39,83 @@ impl Hash for Company {
     }
 }
 
+impl Validate for Company {
+    fn validate(&self) -> HashSet<ValidationResult> {
+        let mut validation_results: HashSet<ValidationResult> = HashSet::new();
+
+        validation_results.insert(self.validate_at_least_one_scenario());
+        validation_results.insert(self.validate_all_scenarios_unique());
+        validation_results.insert(self.validate_probabilities_sum_up_to_one());
+        validation_results.extend(self.validate_all_scenarios());
+
+        validation_results
+    }
+}
+
 impl Company {
-    /// Does all validations. Used after construction
-    pub fn validate(&self) {
-        self.validate_at_least_one_scenario();
-        self.validate_all_scenarios_unique();
-        self.validate_probabilities_sum_up_to_one();
-        self.validate_all_scenarios();
+    /// Validates that we have at least one scenario
+    fn validate_at_least_one_scenario(&self) -> ValidationResult {
+        return if self.scenarios.is_empty() {
+            ValidationResult::PROBLEM(Problem {
+                code: "no-scenarios-for-company",
+                message: format!(
+                    "No scenarios found for {} with ticker {}.",
+                    self.name, self.ticker
+                ),
+                severity: Severity::ERROR,
+            })
+        } else {
+            ValidationResult::OK
+        };
     }
 
-    /// Panics if all scenarios are not unique
-    /// TODO: Convert panics to recoverable errors that can be handled
-    fn validate_all_scenarios_unique(&self) {
-        if self.scenarios.len()
-            != HashSet::<Scenario>::from_iter(self.scenarios.iter().cloned()).len()
-        {
-            panic!("Not all scenarios are unique (have a unique thesis). Check your input.")
-        }
+    /// Validates that all scenarios have a unique thesis
+    fn validate_all_scenarios_unique(&self) -> ValidationResult {
+        let n_unique_scenarios =
+            HashSet::<Scenario>::from_iter(self.scenarios.iter().cloned()).len();
+
+        return if self.scenarios.len() != n_unique_scenarios {
+            ValidationResult::PROBLEM(Problem {
+                code: "scenarios-are-not-unique",
+                message: format!(
+                    "Not all scenarios have a unique thesis for company {}. Check your input.",
+                    self.name
+                ),
+                severity: Severity::ERROR,
+            })
+        } else {
+            ValidationResult::OK
+        };
     }
 
-    /// Panics if we don't have at least one scenario
-    /// TODO: Convert panics to recoverable errors that can be handled
-    fn validate_at_least_one_scenario(&self) {
-        if self.scenarios.is_empty() {
-            panic!(
-                "No scenarios found for {name} with ticker {ticker}.",
-                name = self.name,
-                ticker = self.ticker
-            )
-        }
-    }
-
-    /// Panics if all probabilities across all scenarios don't sum up close to 1
-    /// TODO: Convert panics to recoverable errors that can be handled
-    fn validate_probabilities_sum_up_to_one(&self) {
+    /// Validates that all probabilities across all scenarios sum up close to 1
+    fn validate_probabilities_sum_up_to_one(&self) -> ValidationResult {
         let sum: f64 = self
             .scenarios
             .iter()
             .map(|scenario| scenario.probability)
             .sum();
-        if (sum - 1.0).abs() > TOLERANCE {
-            panic!("Probabilities of all scenarios do not sum up to 1. Sum = {sum}.")
-        }
+
+        return if (sum - 1.0).abs() > TOLERANCE {
+            ValidationResult::PROBLEM(Problem {
+                code: "probabilities-for-all-scenarios-do-not-sum-up-to-one",
+                message: format!("Probabilities of all scenarios do not sum up to 1. Sum = {sum}."),
+                severity: Severity::ERROR,
+            })
+        } else {
+            ValidationResult::OK
+        };
     }
 
-    /// Validate all scenarios
-    fn validate_all_scenarios(&self) {
-        self.scenarios.iter().for_each(|s| s.validate())
+    /// Validate all scenarios individually
+    fn validate_all_scenarios(&self) -> HashSet<ValidationResult> {
+        let mut validation_results: HashSet<ValidationResult> = HashSet::new();
+
+        self.scenarios
+            .iter()
+            .for_each(|s| validation_results.extend(s.validate()));
+
+        validation_results
     }
 }
 
@@ -164,8 +196,7 @@ mod test {
     }
 
     #[test]
-    #[should_panic(expected = "No scenarios found for Some Company with ticker SC.")]
-    fn test_having_no_scenarios_panics() {
+    fn test_validate_no_scenarios() {
         let test_company: Company = Company {
             name: "Some Company".to_string(),
             ticker: "SC".to_string(),
@@ -174,12 +205,17 @@ mod test {
             scenarios: vec![],
         };
 
-        test_company.validate();
+        assert!(test_company
+            .validate()
+            .contains(&ValidationResult::PROBLEM(Problem {
+                code: "no-scenarios-for-company",
+                message: "No scenarios found for Some Company with ticker SC.".to_string(),
+                severity: Severity::ERROR,
+            })));
     }
 
     #[test]
-    #[should_panic(expected = "Not all scenarios are unique (have a unique thesis).")]
-    fn test_having_non_unique_scenarios_panics() {
+    fn test_validate_non_unique_scenarios() {
         let test_company: Company = Company {
             name: "Some Company".to_string(),
             ticker: "SC".to_string(),
@@ -199,12 +235,19 @@ mod test {
             ],
         };
 
-        test_company.validate();
+        assert!(test_company
+            .validate()
+            .contains(&ValidationResult::PROBLEM(Problem {
+            code: "scenarios-are-not-unique",
+            message:
+                "Not all scenarios have a unique thesis for company Some Company. Check your input."
+                    .to_string(),
+            severity: Severity::ERROR,
+        })));
     }
 
     #[test]
-    #[should_panic(expected = "Probabilities of all scenarios do not sum up to 1. Sum = 0.8.")]
-    fn test_probabilities_not_summing_up_to_one_panics() {
+    fn test_validate_probabilities_not_summing_up_to_one() {
         let test_company: Company = Company {
             name: "Some Company".to_string(),
             ticker: "SC".to_string(),
@@ -224,7 +267,14 @@ mod test {
             ],
         };
 
-        test_company.validate();
+        assert!(test_company
+            .validate()
+            .contains(&ValidationResult::PROBLEM(Problem {
+                code: "probabilities-for-all-scenarios-do-not-sum-up-to-one",
+                message: "Probabilities of all scenarios do not sum up to 1. Sum = 0.8."
+                    .to_string(),
+                severity: Severity::ERROR,
+            })));
     }
 
     #[test]

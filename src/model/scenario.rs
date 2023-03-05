@@ -1,4 +1,7 @@
+use crate::validation::result::{Problem, Severity, ValidationResult};
+use crate::validation::validate::Validate;
 use serde::{Deserialize, Serialize};
+use std::collections::HashSet;
 use std::hash::{Hash, Hasher};
 
 /// A scenario is represented by an investment thesis, which can be boiled down to the expected
@@ -26,28 +29,39 @@ impl Hash for Scenario {
     }
 }
 
-impl Scenario {
+impl Validate for Scenario {
     /// Does all validations
-    pub fn validate(&self) {
-        self.validate_probability_bounds();
+    fn validate(&self) -> HashSet<ValidationResult> {
+        HashSet::from([self.validate_probability_bounds()])
     }
+}
 
-    /// Panics if we provide probability lower than zero and higher than one
-    /// TODO: Convert panics to recoverable errors that can be handled
-    fn validate_probability_bounds(&self) {
+impl Scenario {
+    /// Validates that all the probabilities are between 0 and 1
+    fn validate_probability_bounds(&self) -> ValidationResult {
         if self.probability < 0.0 {
-            panic!(
-                "Negative probability is not allowed. Probability: {}",
-                self.probability
-            )
+            return ValidationResult::PROBLEM(Problem {
+                code: "negative-probability-for-scenario",
+                message: format!(
+                    "Negative probability is not allowed. Probability: {}",
+                    self.probability
+                ),
+                severity: Severity::ERROR,
+            });
         }
 
         if self.probability > 1.0 {
-            panic!(
-                "Probability greater than 1 is not allowed. Probability: {}",
-                self.probability
-            )
+            return ValidationResult::PROBLEM(Problem {
+                code: "probability-for-scenario-greater-than-one",
+                message: format!(
+                    "Probability greater than 1 is not allowed. Probability: {}",
+                    self.probability
+                ),
+                severity: Severity::ERROR,
+            });
         }
+
+        ValidationResult::OK
     }
 }
 
@@ -87,25 +101,37 @@ mod test {
     }
 
     #[test]
-    #[should_panic(expected = "Negative probability is not allowed. Probability: -0.2")]
-    fn test_negative_probability_panics() {
+    fn test_validate_negative_probability() {
         let test_scenario = Scenario {
             thesis: "Awesome thesis".to_string(),
             intrinsic_value: 1e10,
             probability: -0.2,
         };
-        test_scenario.validate();
+        assert_eq!(
+            test_scenario.validate(),
+            HashSet::from([ValidationResult::PROBLEM(Problem {
+                code: "negative-probability-for-scenario",
+                message: "Negative probability is not allowed. Probability: -0.2".to_string(),
+                severity: Severity::ERROR,
+            })])
+        );
     }
 
     #[test]
-    #[should_panic(expected = "Probability greater than 1 is not allowed. Probability: 1.2")]
-    fn test_probability_higher_than_one_panics() {
+    fn test_validate_probability_greater_than_one() {
         let test_scenario = Scenario {
             thesis: "Awesome thesis".to_string(),
             intrinsic_value: 1e10,
             probability: 1.2,
         };
-        test_scenario.validate();
+        assert_eq!(
+            test_scenario.validate(),
+            HashSet::from([ValidationResult::PROBLEM(Problem {
+                code: "probability-for-scenario-greater-than-one",
+                message: "Probability greater than 1 is not allowed. Probability: 1.2".to_string(),
+                severity: Severity::ERROR,
+            })])
+        );
     }
 
     #[test]

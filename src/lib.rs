@@ -1,12 +1,16 @@
 mod allocation;
 mod analysis;
 pub mod model;
+pub mod validation;
 
 use crate::allocation::kelly_criterion_allocate;
 use crate::analysis::{all_outcomes, worst_case_outcome};
 use crate::analysis::{cumulative_probability_of_loss, expected_return};
-use log::info;
 use crate::model::company::Company;
+use crate::validation::result::ValidationResult;
+use crate::validation::validate::Validate;
+use log::info;
+use std::collections::HashSet;
 
 /// Portfolio is a vector of PortfolioCompany objects
 pub type Portfolio = Vec<PortfolioCompany>;
@@ -20,8 +24,23 @@ pub struct PortfolioCompany {
 
 /// Creates a vector of candidate companies from YAML
 pub fn create_candidates(yaml_string: &str) -> Vec<Company> {
+    // Deserialize candidates from yaml (TODO: Missing error handling)
     let candidates: Vec<Company> = serde_yaml::from_str(yaml_string).unwrap();
-    candidates.iter().for_each(|c| c.validate());
+
+    // Collect all validation errors
+    let mut all_validation_errors: HashSet<ValidationResult> = HashSet::new();
+    candidates
+        .iter()
+        .for_each(|c| all_validation_errors.extend(c.validate()));
+
+    // Panic at the moment: TODO: Error handling
+    if all_validation_errors
+        .iter()
+        .any(|vr| *vr != ValidationResult::OK)
+    {
+        panic!("Found validation errors: {all_validation_errors:?}");
+    }
+
     candidates
 }
 
@@ -41,6 +60,10 @@ pub fn allocate(candidates: Vec<Company>) -> Portfolio {
                 > 0.0
         })
         .collect();
+
+    // TODO:
+    //  1. Add info statement for filtered candidates
+    //  2. Filter also the "perfect" without any downside
 
     let portfolio = kelly_criterion_allocate(filtered_candidates);
 
