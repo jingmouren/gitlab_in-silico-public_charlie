@@ -1,3 +1,5 @@
+#![feature(decl_macro)]
+
 mod allocation;
 mod analysis;
 pub mod model;
@@ -10,13 +12,70 @@ use crate::model::company::Company;
 use crate::validation::result::ValidationResult;
 use crate::validation::validate::Validate;
 use log::info;
+use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
+use std::io::Read;
+use rocket::data::{FromDataSimple, Outcome};
+use rocket::{Data, Request, post};
+use rocket::http::{ContentType, Status};
+use rocket::Outcome::{Failure, Success};
+use rocket::response::Responder;
+use rocket_contrib::json::Json;
+
+/// TODO
+///  - Re-think the interface, especially the output
+///  - Figure out the issue with Responder
+///  - Move all these data types into model
+///  - Re-introduce integration tests
+
+/// Candidates object holds a vector of Companies. Needed to define a from Trait on it
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct Candidates {
+    companies: Vec<Company>
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct Bla {
+    name: String
+}
+
+const LIMIT: usize = 1024;
+
+impl FromDataSimple for Candidates {
+    type Error = String;
+    fn from_data(request: &Request, data: Data) -> Outcome<Self, String> {
+        // Ensure the content type is correct before opening the data.
+        if request.content_type() != Some(&ContentType::JSON) {
+            return Outcome::Forward(data);
+        }
+
+        // Read the data into a String.
+        let mut string = String::new();
+        if let Err(e) = data.open().take(1024 * 1024).read_to_string(&mut string) {
+            return Failure((Status::InternalServerError, format!("{:?}", e)));
+        }
+
+        // TODO:
+        //  - Handle deserialization errors
+        //  - Perform and handle validation errors
+        println!("{string}");
+        let candidates: Candidates = serde_json::from_str(&*string).unwrap();
+        println!("{candidates:?}");
+
+        Success(candidates)
+    }
+}
 
 /// Portfolio is a vector of PortfolioCompany objects
 pub type Portfolio = Vec<PortfolioCompany>;
 
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct Portfolio2 {
+    portfolio: Portfolio
+}
+
 /// Portfolio company is a company with an associated fraction
-#[derive(Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct PortfolioCompany {
     pub company: Company,
     pub fraction: f64,
@@ -45,11 +104,29 @@ pub fn create_candidates(yaml_string: &str) -> Vec<Company> {
 }
 
 /// Calculates optimal allocation for each candidate company
-pub fn allocate(candidates: Vec<Company>) -> Portfolio {
+#[post("/allocate", format = "application/json", data = "<candidates>")]
+pub fn allocate(candidates: Candidates) -> Json<Bla> {
+
+    // Collect all validation errors
+    let mut all_validation_errors: HashSet<ValidationResult> = HashSet::new();
+    candidates
+        .companies
+        .iter()
+        .for_each(|c| all_validation_errors.extend(c.validate()));
+
+    // Panic at the moment: TODO: Error handling
+    if all_validation_errors
+        .iter()
+        .any(|vr| *vr != ValidationResult::OK)
+    {
+        panic!("Found validation errors: {all_validation_errors:?}");
+    }
+
     // Retain only the candidates that have positive expected value. This would otherwise likely
     // lead to negative fractions (which implies shorting). Note that I said "likely" because I'm
     // not 100% sure, but just have a feeling.
     let filtered_candidates = candidates
+        .companies
         .iter()
         .cloned()
         .filter(|c| {
@@ -63,7 +140,7 @@ pub fn allocate(candidates: Vec<Company>) -> Portfolio {
 
     // TODO:
     //  1. Add info statement for filtered candidates
-    //  2. Filter also the "perfect" without any downside
+    //  2. Filter also the "perfect candidates (the ones without any downside)
 
     let portfolio = kelly_allocate(filtered_candidates, MAX_ITER);
 
@@ -75,7 +152,8 @@ pub fn allocate(candidates: Vec<Company>) -> Portfolio {
         )
     });
 
-    portfolio
+    //Json(Portfolio2 {portfolio})
+    Json(Bla {name: "Pero".to_string()})
 }
 
 /// Calculates and prints useful information about the portfolio

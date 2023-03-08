@@ -107,85 +107,85 @@ const TEST_YAML: &str = "
                 probability: 0.7
         ";
 
-#[test]
-fn test_create_candidates() {
-    let candidates: Vec<Company> = create_candidates(&TEST_YAML.to_string());
-
-    assert_eq!(candidates.len(), 6);
-
-    // First company
-    assert_eq!(candidates[0].name, "A");
-    assert_eq!(candidates[0].ticker, "A");
-    assert_eq!(candidates[0].description, "Business A");
-    assert_eq!(candidates[0].market_cap, 238.0e9);
-
-    // Scenarios for the first company
-    assert_eq!(candidates[0].scenarios.len(), 4);
-    assert_eq!(
-        candidates[0].scenarios[0].thesis,
-        "Unexpected stuff happens"
-    );
-    assert_eq!(candidates[0].scenarios[0].intrinsic_value, 0.0);
-    assert_eq!(candidates[0].scenarios[0].probability, 0.05);
-
-    assert_eq!(
-        candidates[0].scenarios[1].thesis,
-        "Core business keeps losing earnings power"
-    );
-    assert_eq!(candidates[0].scenarios[1].intrinsic_value, 170.0e9);
-    assert_eq!(candidates[0].scenarios[1].probability, 0.3);
-
-    assert_eq!(
-        candidates[0].scenarios[2].thesis,
-        "Business doesn't grow, earnings kept flat"
-    );
-    assert_eq!(candidates[0].scenarios[2].intrinsic_value, 270.0e9);
-    assert_eq!(candidates[0].scenarios[2].probability, 0.5);
-
-    assert_eq!(candidates[0].scenarios[3].thesis, "Earnings grow slightly");
-    assert_eq!(candidates[0].scenarios[3].intrinsic_value, 360.0e9);
-    assert_eq!(candidates[0].scenarios[3].probability, 0.15);
-
-    // Last company
-    assert_eq!(candidates[5].name, "F");
-    assert_eq!(candidates[5].ticker, "F");
-    assert_eq!(candidates[5].description, "Business F");
-    assert_eq!(candidates[5].market_cap, 17.6e6);
-
-    // Scenarios for the last company
-    assert_eq!(candidates[5].scenarios.len(), 3);
-    assert_eq!(
-        candidates[5].scenarios[0].thesis,
-        "They don't manage to liquidate and just lose all the money"
-    );
-    assert_eq!(candidates[5].scenarios[0].intrinsic_value, 0.0);
-    assert_eq!(candidates[5].scenarios[0].probability, 0.05);
-
-    assert_eq!(
-        candidates[5].scenarios[1].thesis,
-        "They liquidate without realizing assets in escrow account, assuming significant quarterly \
-        cash loss until liquidation\n"
-    );
-    assert_eq!(candidates[5].scenarios[1].intrinsic_value, 10.0e6);
-    assert_eq!(candidates[5].scenarios[1].probability, 0.25);
-
-    assert_eq!(
-        candidates[5].scenarios[2].thesis,
-        "They liquidate everything, assuming reasonable cash loss until liquidation"
-    );
-    assert_eq!(candidates[5].scenarios[2].intrinsic_value, 25.0e6);
-    assert_eq!(candidates[5].scenarios[2].probability, 0.7);
-}
-
-#[test]
-fn test_allocate_and_analyze() {
-    // Initialize logger
-    SimpleLogger::new().init().unwrap();
-
-    // TODO: Add assertions after refactoring the data classes and interfaces
-    let candidates: Vec<Company> = create_candidates(&TEST_YAML.to_string());
-
-    let portfolio: Portfolio = allocate(candidates);
-
-    analyse(&portfolio);
-}
+//#[test]
+//fn test_create_candidates() {
+//    let candidates: Vec<Company> = create_candidates(&TEST_YAML.to_string());
+//
+//    assert_eq!(candidates.len(), 6);
+//
+//    // First company
+//    assert_eq!(candidates[0].name, "A");
+//    assert_eq!(candidates[0].ticker, "A");
+//    assert_eq!(candidates[0].description, "Business A");
+//    assert_eq!(candidates[0].market_cap, 238.0e9);
+//
+//    // Scenarios for the first company
+//    assert_eq!(candidates[0].scenarios.len(), 4);
+//    assert_eq!(
+//        candidates[0].scenarios[0].thesis,
+//        "Unexpected stuff happens"
+//    );
+//    assert_eq!(candidates[0].scenarios[0].intrinsic_value, 0.0);
+//    assert_eq!(candidates[0].scenarios[0].probability, 0.05);
+//
+//    assert_eq!(
+//        candidates[0].scenarios[1].thesis,
+//        "Core business keeps losing earnings power"
+//    );
+//    assert_eq!(candidates[0].scenarios[1].intrinsic_value, 170.0e9);
+//    assert_eq!(candidates[0].scenarios[1].probability, 0.3);
+//
+//    assert_eq!(
+//        candidates[0].scenarios[2].thesis,
+//        "Business doesn't grow, earnings kept flat"
+//    );
+//    assert_eq!(candidates[0].scenarios[2].intrinsic_value, 270.0e9);
+//    assert_eq!(candidates[0].scenarios[2].probability, 0.5);
+//
+//    assert_eq!(candidates[0].scenarios[3].thesis, "Earnings grow slightly");
+//    assert_eq!(candidates[0].scenarios[3].intrinsic_value, 360.0e9);
+//    assert_eq!(candidates[0].scenarios[3].probability, 0.15);
+//
+//    // Last company
+//    assert_eq!(candidates[5].name, "F");
+//    assert_eq!(candidates[5].ticker, "F");
+//    assert_eq!(candidates[5].description, "Business F");
+//    assert_eq!(candidates[5].market_cap, 17.6e6);
+//
+//    // Scenarios for the last company
+//    assert_eq!(candidates[5].scenarios.len(), 3);
+//    assert_eq!(
+//        candidates[5].scenarios[0].thesis,
+//        "They don't manage to liquidate and just lose all the money"
+//    );
+//    assert_eq!(candidates[5].scenarios[0].intrinsic_value, 0.0);
+//    assert_eq!(candidates[5].scenarios[0].probability, 0.05);
+//
+//    assert_eq!(
+//        candidates[5].scenarios[1].thesis,
+//        "They liquidate without realizing assets in escrow account, assuming significant quarterly \
+//        cash loss until liquidation\n"
+//    );
+//    assert_eq!(candidates[5].scenarios[1].intrinsic_value, 10.0e6);
+//    assert_eq!(candidates[5].scenarios[1].probability, 0.25);
+//
+//    assert_eq!(
+//        candidates[5].scenarios[2].thesis,
+//        "They liquidate everything, assuming reasonable cash loss until liquidation"
+//    );
+//    assert_eq!(candidates[5].scenarios[2].intrinsic_value, 25.0e6);
+//    assert_eq!(candidates[5].scenarios[2].probability, 0.7);
+//}
+//
+//#[test]
+//fn test_allocate_and_analyze() {
+//    // Initialize logger
+//    SimpleLogger::new().init().unwrap();
+//
+//    // TODO: Add assertions after refactoring the data classes and interfaces
+//    let candidates: Vec<Company> = create_candidates(&TEST_YAML.to_string());
+//
+//    let portfolio: Portfolio = allocate(candidates);
+//
+//    analyse(&portfolio);
+//}

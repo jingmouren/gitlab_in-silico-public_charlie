@@ -11,10 +11,11 @@ Tools to help with capital allocation process.
 - [x] Integration tests
 - [x] Logging instead of printing
 - [x] Refactor validation
+- [ ] Server POC
+- [ ] Error handling
 - [ ] API trait with controller and http client
 - [ ] Command line interface
-- [ ] Error handling
-- [ ] Server
+- [ ] Special (direct) handling of single company Kelly allocation
 
 
 ## Investment process
