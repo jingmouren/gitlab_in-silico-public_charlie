@@ -1,6 +1,6 @@
 use crate::analysis::{all_outcomes, Outcome};
 use crate::model::company::Company;
-use crate::{Portfolio, PortfolioCompany};
+use crate::model::portfolio::{Portfolio, PortfolioCompany};
 use log::info;
 use nalgebra::{DMatrix, DVector};
 use num_traits::pow::Pow;
@@ -20,19 +20,22 @@ pub fn kelly_allocate(candidates: Vec<Company>, max_iter: u32) -> Portfolio {
 
     // Get all outcomes for a list of candidates. Note that the fractions are not relevant here
     // since we only care about non-weighted company returns and probability
-    let mut portfolio: Portfolio = candidates
-        .into_iter()
-        .map(|c| PortfolioCompany {
-            company: c,
-            fraction: uniform_fraction,
-        })
-        .collect();
+    let mut portfolio: Portfolio = Portfolio {
+        portfolio_companies: candidates
+            .into_iter()
+            .map(|c| PortfolioCompany {
+                company: c,
+                fraction: uniform_fraction,
+            })
+            .collect(),
+    };
     let outcomes: Vec<Outcome> = all_outcomes(&portfolio);
 
     let mut counter: u32 = 0;
     loop {
         // Update the fractions in the portfolio for calculating Kelly function and Jacobian
         portfolio
+            .portfolio_companies
             .iter_mut()
             .enumerate()
             .for_each(|(i, pc)| pc.fraction = fractions[i]);
@@ -88,6 +91,7 @@ pub fn kelly_allocate(candidates: Vec<Company>, max_iter: u32) -> Portfolio {
 
     // Update the fractions in portfolio and return
     portfolio
+        .portfolio_companies
         .iter_mut()
         .enumerate()
         .for_each(|(i, pc)| pc.fraction = fractions[i]);
@@ -96,17 +100,18 @@ pub fn kelly_allocate(candidates: Vec<Company>, max_iter: u32) -> Portfolio {
 
 /// Calculates the Kelly criterion given all outcomes and portfolio
 fn kelly_criterion(outcomes: &[Outcome], portfolio: &Portfolio) -> DVector<f64> {
-    let n_companies = portfolio.len();
+    let n_companies = portfolio.portfolio_companies.len();
 
     let kelly: DVector<f64> = DVector::from_iterator(
         n_companies,
-        portfolio.iter().map(|pc_outer| {
+        portfolio.portfolio_companies.iter().map(|pc_outer| {
             outcomes
                 .iter()
                 .map(|o| {
                     o.probability * o.company_returns[&pc_outer.company.ticker]
                         / (1.0
                             + portfolio
+                                .portfolio_companies
                                 .iter()
                                 .map(|pc| pc.fraction * o.company_returns[&pc.company.ticker])
                                 .sum::<f64>())
@@ -120,14 +125,14 @@ fn kelly_criterion(outcomes: &[Outcome], portfolio: &Portfolio) -> DVector<f64> 
 
 /// Calculates the Jacobian for the Kelly function given all outcomes and portfolio
 fn kelly_criterion_jacobian(outcomes: &[Outcome], portfolio: &Portfolio) -> DMatrix<f64> {
-    let n_companies: usize = portfolio.len();
+    let n_companies: usize = portfolio.portfolio_companies.len();
     let mut jacobian: DMatrix<f64> = DMatrix::zeros(n_companies, n_companies);
 
     // Note: Jacobian for this system is symmetric, that's why we loop only over the upper triangle
     for row_index in 0..n_companies {
         for column_index in row_index..n_companies {
-            let row_company: &Company = &portfolio[row_index].company;
-            let column_company: &Company = &portfolio[column_index].company;
+            let row_company: &Company = &portfolio.portfolio_companies[row_index].company;
+            let column_company: &Company = &portfolio.portfolio_companies[column_index].company;
 
             jacobian[(row_index, column_index)] = -outcomes
                 .iter()
@@ -137,6 +142,7 @@ fn kelly_criterion_jacobian(outcomes: &[Outcome], portfolio: &Portfolio) -> DMat
                         * o.company_returns[&column_company.ticker]
                         * (1.0
                             + portfolio
+                                .portfolio_companies
                                 .iter()
                                 .map(|pc| pc.fraction * o.company_returns[&pc.company.ticker])
                                 .sum::<f64>())
@@ -206,16 +212,18 @@ mod test {
 
     /// Helper function for generating test data used in unit tests
     fn generate_test_data(test_candidates: &Vec<Company>) -> (Portfolio, Vec<Outcome>) {
-        let portfolio: Portfolio = vec![
-            PortfolioCompany {
-                company: test_candidates[0].clone(),
-                fraction: 0.5,
-            },
-            PortfolioCompany {
-                company: test_candidates[1].clone(),
-                fraction: 0.5,
-            },
-        ];
+        let portfolio: Portfolio = Portfolio {
+            portfolio_companies: vec![
+                PortfolioCompany {
+                    company: test_candidates[0].clone(),
+                    fraction: 0.5,
+                },
+                PortfolioCompany {
+                    company: test_candidates[1].clone(),
+                    fraction: 0.5,
+                },
+            ],
+        };
 
         let outcomes: Vec<Outcome> = vec![
             // Events A1 and B1

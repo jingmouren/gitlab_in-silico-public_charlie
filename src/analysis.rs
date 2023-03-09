@@ -15,8 +15,9 @@ pub struct Outcome {
 /// Returns all possible outcomes (expected portfolio return and associated probability)
 pub fn all_outcomes(portfolio: &Portfolio) -> Vec<Outcome> {
     // Number of different outcomes is a product of number of all scenarios for all companies
-    let n_outcomes = if !portfolio.is_empty() {
+    let n_outcomes = if !portfolio.portfolio_companies.is_empty() {
         portfolio
+            .portfolio_companies
             .iter()
             .map(|pc| pc.company.scenarios.len())
             .product()
@@ -37,8 +38,9 @@ pub fn all_outcomes(portfolio: &Portfolio) -> Vec<Outcome> {
     let mut outcomes: Vec<Outcome> = Vec::with_capacity(n_outcomes);
 
     // 2. Helper vectors keeping track of current indices for scenarios of all companies
-    let mut scenario_indices: Vec<usize> = vec![0; portfolio.len()];
+    let mut scenario_indices: Vec<usize> = vec![0; portfolio.portfolio_companies.len()];
     let n_scenarios: Vec<usize> = portfolio
+        .portfolio_companies
         .iter()
         .map(|pc| pc.company.scenarios.len())
         .collect();
@@ -50,21 +52,25 @@ pub fn all_outcomes(portfolio: &Portfolio) -> Vec<Outcome> {
         let mut outcome = Outcome {
             weighted_return: 0.0,
             probability: 1.0,
-            company_returns: HashMap::with_capacity(portfolio.len()),
+            company_returns: HashMap::with_capacity(portfolio.portfolio_companies.len()),
         };
 
-        portfolio.iter().enumerate().for_each(|(ticker_id, pc)| {
-            let scenario_id = scenario_indices[ticker_id];
-            let c = &pc.company;
-            let s = &c.scenarios[scenario_id];
+        portfolio
+            .portfolio_companies
+            .iter()
+            .enumerate()
+            .for_each(|(ticker_id, pc)| {
+                let scenario_id = scenario_indices[ticker_id];
+                let c = &pc.company;
+                let s = &c.scenarios[scenario_id];
 
-            let company_return = (s.intrinsic_value - c.market_cap) / c.market_cap;
-            outcome.weighted_return += pc.fraction * company_return;
-            outcome.probability *= s.probability;
-            outcome
-                .company_returns
-                .insert(c.ticker.clone(), company_return);
-        });
+                let company_return = (s.intrinsic_value - c.market_cap) / c.market_cap;
+                outcome.weighted_return += pc.fraction * company_return;
+                outcome.probability *= s.probability;
+                outcome
+                    .company_returns
+                    .insert(c.ticker.clone(), company_return);
+            });
 
         // 2. Append the calculated outcome to the list of outcomes
         outcomes.push(outcome);
@@ -90,6 +96,7 @@ pub fn all_outcomes(portfolio: &Portfolio) -> Vec<Outcome> {
 /// Calculates expected return of a portfolio
 pub fn expected_return(portfolio: &Portfolio) -> f64 {
     let expected_return: f64 = portfolio
+        .portfolio_companies
         .iter()
         .map(|pc| {
             let market_cap = pc.company.market_cap;
@@ -148,6 +155,7 @@ mod test {
     use super::*;
     use crate::model::company;
     use crate::model::company::Company;
+    use crate::model::portfolio::PortfolioCompany;
     use crate::model::scenario::Scenario;
     use crate::PortfolioCompany;
 
@@ -163,9 +171,89 @@ mod test {
 
     /// A helper function that creates portfolio with three assets used in a couple of tests
     fn get_test_portfolio_with_three_assets() -> Portfolio {
-        let test_portfolio: Portfolio = vec![
-            // Fair coin flip
-            PortfolioCompany {
+        let test_portfolio: Portfolio = Portfolio {
+            portfolio_companies: vec![
+                // Fair coin flip
+                PortfolioCompany {
+                    company: Company {
+                        name: "Fair coin flip".to_string(),
+                        ticker: "A".to_string(),
+                        description: "Something we should never invest into".to_string(),
+                        market_cap: 1e6,
+                        scenarios: vec![
+                            Scenario {
+                                thesis: "Head".to_string(),
+                                intrinsic_value: 2e6,
+                                probability: 0.5,
+                            },
+                            Scenario {
+                                thesis: "Tail".to_string(),
+                                intrinsic_value: 0.0,
+                                probability: 0.5,
+                            },
+                        ],
+                    },
+                    fraction: 0.2,
+                },
+                // Biased coin flip with 30% allocation
+                PortfolioCompany {
+                    company: Company {
+                        name: "Biased coin flip".to_string(),
+                        ticker: "B".to_string(),
+                        description: "A not-so-fair coin flip".to_string(),
+                        market_cap: 1e6,
+                        scenarios: vec![
+                            Scenario {
+                                thesis: "Head".to_string(),
+                                intrinsic_value: 2e6,
+                                probability: 0.6,
+                            },
+                            Scenario {
+                                thesis: "Tail".to_string(),
+                                intrinsic_value: 0.0,
+                                probability: 0.4,
+                            },
+                        ],
+                    },
+                    fraction: 0.3,
+                },
+                // Something with only upside 50% allocation
+                PortfolioCompany {
+                    company: Company {
+                        name: "Something with only upside".to_string(),
+                        ticker: "C".to_string(),
+                        description: "Shouldn't lose money here because of xyz".to_string(),
+                        market_cap: 1e8,
+                        scenarios: vec![
+                            Scenario {
+                                thesis: "Double".to_string(),
+                                intrinsic_value: 2e8,
+                                probability: 0.3,
+                            },
+                            Scenario {
+                                thesis: "50 percent up".to_string(),
+                                intrinsic_value: 1.5e8,
+                                probability: 0.3,
+                            },
+                            Scenario {
+                                thesis: "Same as now".to_string(),
+                                intrinsic_value: 1e8,
+                                probability: 0.4,
+                            },
+                        ],
+                    },
+                    fraction: 0.5,
+                },
+            ],
+        };
+
+        test_portfolio
+    }
+
+    #[test]
+    fn test_expected_value_single_fair_coin_flip() {
+        let test_portfolio: Portfolio = Portfolio {
+            portfolio_companies: vec![PortfolioCompany {
                 company: Company {
                     name: "Fair coin flip".to_string(),
                     ticker: "A".to_string(),
@@ -184,10 +272,17 @@ mod test {
                         },
                     ],
                 },
-                fraction: 0.2,
-            },
-            // Biased coin flip with 30% allocation
-            PortfolioCompany {
+                fraction: 1.0,
+            }],
+        };
+
+        assert!(expected_return(&test_portfolio) < company::TOLERANCE);
+    }
+
+    #[test]
+    fn test_expected_value_single_biased_coin_flip() {
+        let test_portfolio: Portfolio = Portfolio {
+            portfolio_companies: vec![PortfolioCompany {
                 company: Company {
                     name: "Biased coin flip".to_string(),
                     ticker: "B".to_string(),
@@ -197,99 +292,18 @@ mod test {
                         Scenario {
                             thesis: "Head".to_string(),
                             intrinsic_value: 2e6,
-                            probability: 0.6,
+                            probability: 0.8,
                         },
                         Scenario {
                             thesis: "Tail".to_string(),
                             intrinsic_value: 0.0,
-                            probability: 0.4,
+                            probability: 0.2,
                         },
                     ],
                 },
-                fraction: 0.3,
-            },
-            // Something with only upside 50% allocation
-            PortfolioCompany {
-                company: Company {
-                    name: "Something with only upside".to_string(),
-                    ticker: "C".to_string(),
-                    description: "Shouldn't lose money here because of xyz".to_string(),
-                    market_cap: 1e8,
-                    scenarios: vec![
-                        Scenario {
-                            thesis: "Double".to_string(),
-                            intrinsic_value: 2e8,
-                            probability: 0.3,
-                        },
-                        Scenario {
-                            thesis: "50 percent up".to_string(),
-                            intrinsic_value: 1.5e8,
-                            probability: 0.3,
-                        },
-                        Scenario {
-                            thesis: "Same as now".to_string(),
-                            intrinsic_value: 1e8,
-                            probability: 0.4,
-                        },
-                    ],
-                },
-                fraction: 0.5,
-            },
-        ];
-
-        test_portfolio
-    }
-
-    #[test]
-    fn test_expected_value_single_fair_coin_flip() {
-        let test_portfolio: Portfolio = vec![PortfolioCompany {
-            company: Company {
-                name: "Fair coin flip".to_string(),
-                ticker: "A".to_string(),
-                description: "Something we should never invest into".to_string(),
-                market_cap: 1e6,
-                scenarios: vec![
-                    Scenario {
-                        thesis: "Head".to_string(),
-                        intrinsic_value: 2e6,
-                        probability: 0.5,
-                    },
-                    Scenario {
-                        thesis: "Tail".to_string(),
-                        intrinsic_value: 0.0,
-                        probability: 0.5,
-                    },
-                ],
-            },
-            fraction: 1.0,
-        }];
-
-        assert!(expected_return(&test_portfolio) < company::TOLERANCE);
-    }
-
-    #[test]
-    fn test_expected_value_single_biased_coin_flip() {
-        let test_portfolio: Portfolio = vec![PortfolioCompany {
-            company: Company {
-                name: "Biased coin flip".to_string(),
-                ticker: "B".to_string(),
-                description: "A not-so-fair coin flip".to_string(),
-                market_cap: 1e6,
-                scenarios: vec![
-                    Scenario {
-                        thesis: "Head".to_string(),
-                        intrinsic_value: 2e6,
-                        probability: 0.8,
-                    },
-                    Scenario {
-                        thesis: "Tail".to_string(),
-                        intrinsic_value: 0.0,
-                        probability: 0.2,
-                    },
-                ],
-            },
-            fraction: 1.0,
-        }];
+                fraction: 1.0,
+            }],
+        };
 
         assert!((expected_return(&test_portfolio) - 0.6).abs() < company::TOLERANCE);
     }
@@ -314,9 +328,11 @@ mod test {
     #[should_panic(expected = "You have 65536 different outcomes for your portfolio.")]
     fn test_all_outcomes_too_many_assets_and_scenarios() {
         // Create a portfolio with 16 companies, each with 2 scenarios
-        let mut test_portfolio: Portfolio = vec![];
+        let mut test_portfolio: Portfolio = Portfolio {
+            portfolio_companies: vec![],
+        };
         for i in 0..16 {
-            test_portfolio.push(PortfolioCompany {
+            test_portfolio.portfolio_companies.push(PortfolioCompany {
                 company: Company {
                     name: format!("{i}"),
                     ticker: format!("{i}"),

@@ -2,6 +2,7 @@
 
 mod allocation;
 mod analysis;
+pub mod api;
 pub mod model;
 pub mod validation;
 
@@ -9,77 +10,21 @@ use crate::allocation::{kelly_allocate, MAX_ITER};
 use crate::analysis::{all_outcomes, worst_case_outcome};
 use crate::analysis::{cumulative_probability_of_loss, expected_return};
 use crate::model::company::Company;
+use crate::model::portfolio::{Portfolio, PortfolioCandidates};
+use crate::model::result::{
+    AllocationResult, AnalysisResult, CompleteResult, ProbabilityAndReturn, TickerAndFraction,
+};
 use crate::validation::result::ValidationResult;
 use crate::validation::validate::Validate;
-use log::info;
-use serde::{Deserialize, Serialize};
-use std::collections::HashSet;
-use std::io::Read;
-use rocket::data::{FromDataSimple, Outcome};
-use rocket::{Data, Request, post};
-use rocket::http::{ContentType, Status};
-use rocket::Outcome::{Failure, Success};
+use rocket::post;
 use rocket::response::Responder;
 use rocket_contrib::json::Json;
+use std::collections::HashSet;
 
 /// TODO
-///  - Re-think the interface, especially the output
 ///  - Figure out the issue with Responder
 ///  - Move all these data types into model
 ///  - Re-introduce integration tests
-
-/// Candidates object holds a vector of Companies. Needed to define a from Trait on it
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct Candidates {
-    companies: Vec<Company>
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct Bla {
-    name: String
-}
-
-const LIMIT: usize = 1024;
-
-impl FromDataSimple for Candidates {
-    type Error = String;
-    fn from_data(request: &Request, data: Data) -> Outcome<Self, String> {
-        // Ensure the content type is correct before opening the data.
-        if request.content_type() != Some(&ContentType::JSON) {
-            return Outcome::Forward(data);
-        }
-
-        // Read the data into a String.
-        let mut string = String::new();
-        if let Err(e) = data.open().take(1024 * 1024).read_to_string(&mut string) {
-            return Failure((Status::InternalServerError, format!("{:?}", e)));
-        }
-
-        // TODO:
-        //  - Handle deserialization errors
-        //  - Perform and handle validation errors
-        println!("{string}");
-        let candidates: Candidates = serde_json::from_str(&*string).unwrap();
-        println!("{candidates:?}");
-
-        Success(candidates)
-    }
-}
-
-/// Portfolio is a vector of PortfolioCompany objects
-pub type Portfolio = Vec<PortfolioCompany>;
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct Portfolio2 {
-    portfolio: Portfolio
-}
-
-/// Portfolio company is a company with an associated fraction
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct PortfolioCompany {
-    pub company: Company,
-    pub fraction: f64,
-}
 
 /// Creates a vector of candidate companies from YAML
 pub fn create_candidates(yaml_string: &str) -> Vec<Company> {
@@ -104,12 +49,15 @@ pub fn create_candidates(yaml_string: &str) -> Vec<Company> {
 }
 
 /// Calculates optimal allocation for each candidate company
-#[post("/allocate", format = "application/json", data = "<candidates>")]
-pub fn allocate(candidates: Candidates) -> Json<Bla> {
-
+#[post(
+    "/allocate",
+    format = "application/json",
+    data = "<portfolio_candidates>"
+)]
+pub fn allocate(portfolio_candidates: PortfolioCandidates) -> Json<CompleteResult> {
     // Collect all validation errors
     let mut all_validation_errors: HashSet<ValidationResult> = HashSet::new();
-    candidates
+    portfolio_candidates
         .companies
         .iter()
         .for_each(|c| all_validation_errors.extend(c.validate()));
@@ -125,7 +73,7 @@ pub fn allocate(candidates: Candidates) -> Json<Bla> {
     // Retain only the candidates that have positive expected value. This would otherwise likely
     // lead to negative fractions (which implies shorting). Note that I said "likely" because I'm
     // not 100% sure, but just have a feeling.
-    let filtered_candidates = candidates
+    let filtered_candidates = portfolio_candidates
         .companies
         .iter()
         .cloned()
@@ -144,16 +92,28 @@ pub fn allocate(candidates: Candidates) -> Json<Bla> {
 
     let portfolio = kelly_allocate(filtered_candidates, MAX_ITER);
 
-    portfolio.iter().for_each(|pc| {
-        info!(
-            "Company: {}, fraction: {:.1}%",
-            pc.company.name,
-            100.0 * pc.fraction
-        )
-    });
+    let allocation_result = AllocationResult {
+        allocations: portfolio
+            .portfolio_companies
+            .iter()
+            .map(|pc| TickerAndFraction {
+                ticker: pc.company.ticker.clone(),
+                fraction: pc.fraction,
+            })
+            .collect(),
+    };
 
-    //Json(Portfolio2 {portfolio})
-    Json(Bla {name: "Pero".to_string()})
+    Json(CompleteResult {
+        resulting_portfolio: allocation_result,
+        resulting_analysis: AnalysisResult {
+            worst_case_outcome: ProbabilityAndReturn {
+                probability: 0.0,
+                weighted_return: 0.0,
+            },
+            cumulative_probability_of_loss: 0.0,
+            expected_value: 0.0,
+        },
+    })
 }
 
 /// Calculates and prints useful information about the portfolio
