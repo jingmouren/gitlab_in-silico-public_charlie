@@ -41,7 +41,7 @@ impl Scenario {
     fn validate_probability_bounds(&self) -> ValidationResult {
         if self.probability < 0.0 {
             return ValidationResult::PROBLEM(Problem {
-                code: "negative-probability-for-scenario",
+                code: "negative-probability-for-scenario".to_string(),
                 message: format!(
                     "Negative probability is not allowed. Probability: {}",
                     self.probability
@@ -52,7 +52,7 @@ impl Scenario {
 
         if self.probability > 1.0 {
             return ValidationResult::PROBLEM(Problem {
-                code: "probability-for-scenario-greater-than-one",
+                code: "probability-for-scenario-greater-than-one".to_string(),
                 message: format!(
                     "Probability greater than 1 is not allowed. Probability: {}",
                     self.probability
@@ -110,7 +110,7 @@ mod test {
         assert_eq!(
             test_scenario.validate(),
             HashSet::from([ValidationResult::PROBLEM(Problem {
-                code: "negative-probability-for-scenario",
+                code: "negative-probability-for-scenario".to_string(),
                 message: "Negative probability is not allowed. Probability: -0.2".to_string(),
                 severity: Severity::ERROR,
             })])
@@ -127,7 +127,7 @@ mod test {
         assert_eq!(
             test_scenario.validate(),
             HashSet::from([ValidationResult::PROBLEM(Problem {
-                code: "probability-for-scenario-greater-than-one",
+                code: "probability-for-scenario-greater-than-one".to_string(),
                 message: "Probability greater than 1 is not allowed. Probability: 1.2".to_string(),
                 severity: Severity::ERROR,
             })])

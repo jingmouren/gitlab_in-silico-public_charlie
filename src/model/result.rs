@@ -1,17 +1,14 @@
 use crate::model::company::Ticker;
+use crate::validation::result::ValidationResult;
 use serde::{Deserialize, Serialize};
 
-/// Complete result includes both the allocation result and the analysis of the resulting portfolio
+/// All results contained inside a response to the client
+/// TODO: Add expected errors here as well
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct CompleteResult {
-    pub(crate) resulting_portfolio: AllocationResult,
-    pub(crate) resulting_analysis: AnalysisResult,
-}
-
-/// Allocation result includes companies (tickers) and their fractions
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct AllocationResult {
-    pub(crate) allocations: Vec<TickerAndFraction>,
+pub struct ResponseResult {
+    pub(crate) allocations: Option<Vec<TickerAndFraction>>,
+    pub(crate) analysis: Option<AnalysisResult>,
+    pub(crate) validation_errors: Option<Vec<ValidationResult>>,
 }
 
 /// Analysis result includes some statistics for a given portfolio

@@ -309,16 +309,16 @@ mod test {
         let test_candidates: Vec<Company> = generate_test_candidates();
         let portfolio: Portfolio = kelly_allocate(test_candidates, MAX_ITER);
 
-        assert_eq!(portfolio.len(), 2);
+        assert_eq!(portfolio.portfolio_companies.len(), 2);
         assert!(
-            (portfolio[0].fraction - 0.180609).abs() < ASSERTION_TOLERANCE,
+            (portfolio.portfolio_companies[0].fraction - 0.180609).abs() < ASSERTION_TOLERANCE,
             "Expected close to 0.180609, got {}",
-            portfolio[0].fraction
+            portfolio.portfolio_companies[0].fraction
         );
         assert!(
-            (portfolio[1].fraction - 0.819391).abs() < ASSERTION_TOLERANCE,
+            (portfolio.portfolio_companies[1].fraction - 0.819391).abs() < ASSERTION_TOLERANCE,
             "Expected close to 0.819391, got {}",
-            portfolio[1].fraction
+            portfolio.portfolio_companies[1].fraction
         );
     }
 
@@ -346,11 +346,11 @@ mod test {
 
         let portfolio: Portfolio = kelly_allocate(test_candidates, MAX_ITER);
 
-        assert_eq!(portfolio.len(), 1);
+        assert_eq!(portfolio.portfolio_companies.len(), 1);
         assert!(
-            (portfolio[0].fraction - 0.5).abs() < ASSERTION_TOLERANCE,
+            (portfolio.portfolio_companies[0].fraction - 0.5).abs() < ASSERTION_TOLERANCE,
             "Expected close to 0.5, got {}",
-            portfolio[0].fraction
+            portfolio.portfolio_companies[0].fraction
         );
     }
 

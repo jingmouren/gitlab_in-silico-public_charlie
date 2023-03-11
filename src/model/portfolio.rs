@@ -36,9 +36,13 @@ impl FromDataSimple for PortfolioCandidates {
             return Outcome::Forward(data);
         }
 
-        // Read the data into a String.
-        let mut string = String::new();
-        if let Err(e) = data.open().take(1024 * 1024).read_to_string(&mut string) {
+        // Read the data into a String, return 500 if it fails
+        let mut json_string = String::new();
+        if let Err(e) = data
+            .open()
+            .take(1024 * 1024)
+            .read_to_string(&mut json_string)
+        {
             error!(
                 "Unable to read data from the request. Request: {:?}",
                 request
@@ -46,11 +50,18 @@ impl FromDataSimple for PortfolioCandidates {
             return Failure((Status::InternalServerError, format!("{:?}", e)));
         }
 
-        // TODO:
-        //  - Handle deserialization errors
-        //  - Perform and handle validation errors
-        let candidates: PortfolioCandidates = serde_json::from_str(&*string).unwrap();
+        // Handle deserialization errors, return 400 if it fails
+        let portfolio_candidates: PortfolioCandidates = match serde_json::from_str(&json_string) {
+            Ok(r) => r,
+            Err(e) => {
+                info!(
+                    "Did not manage to deserialize payload into candidates. Error: {:?}",
+                    e
+                );
+                return Failure((Status::BadRequest, format!("{:?}", e)));
+            }
+        };
 
-        Success(candidates)
+        Success(portfolio_candidates)
     }
 }

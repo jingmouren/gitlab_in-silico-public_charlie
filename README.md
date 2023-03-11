@@ -12,6 +12,7 @@ Tools to help with capital allocation process.
 - [x] Logging instead of printing
 - [x] Refactor validation
 - [ ] Server POC
+- [ ] Remove AllValidationProblems struct
 - [ ] Error handling
 - [ ] API trait with controller and http client
 - [ ] Command line interface

@@ -1,5 +1,5 @@
 use crate::model::company::Ticker;
-use crate::Portfolio;
+use crate::model::portfolio::Portfolio;
 use log::info;
 use ordered_float::OrderedFloat;
 use std::collections::HashMap;
@@ -155,9 +155,8 @@ mod test {
     use super::*;
     use crate::model::company;
     use crate::model::company::Company;
-    use crate::model::portfolio::PortfolioCompany;
+    use crate::model::portfolio::{Portfolio, PortfolioCompany};
     use crate::model::scenario::Scenario;
-    use crate::PortfolioCompany;
 
     impl PartialEq<Self> for Outcome {
         fn eq(&self, other: &Self) -> bool {
@@ -318,7 +317,9 @@ mod test {
     #[test]
     fn test_all_outcomes_no_assets() {
         // Create an empty portfolio and attempt to calculate all outcomes, which fails
-        let test_portfolio = Portfolio::new();
+        let test_portfolio = Portfolio {
+            portfolio_companies: vec![],
+        };
         let all_outcomes = all_outcomes(&test_portfolio);
 
         assert_eq!(all_outcomes, vec![]);
