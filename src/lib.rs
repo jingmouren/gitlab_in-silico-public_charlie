@@ -1,5 +1,3 @@
-#![feature(decl_macro)]
-
 mod allocation;
 mod analysis;
 pub mod api;
@@ -16,7 +14,7 @@ use crate::model::result::{
 use crate::validation::result::ValidationResult;
 use crate::validation::validate::Validate;
 use rocket::post;
-use rocket_contrib::json::Json;
+use rocket::serde::json::Json;
 use std::collections::HashSet;
 
 /// TODO
