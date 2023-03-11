@@ -16,7 +16,7 @@ pub struct ResponseResult {
 pub struct AnalysisResult {
     pub(crate) worst_case_outcome: ProbabilityAndReturn,
     pub(crate) cumulative_probability_of_loss: f64,
-    pub(crate) expected_value: f64,
+    pub(crate) expected_return: f64,
 }
 
 /// A ticker and a fraction used for minimalistic representation of the allocation calculation

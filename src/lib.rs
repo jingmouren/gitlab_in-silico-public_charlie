@@ -10,7 +10,9 @@ use crate::allocation::{kelly_allocate, MAX_ITER};
 use crate::analysis::{all_outcomes, worst_case_outcome};
 use crate::analysis::{cumulative_probability_of_loss, expected_return};
 use crate::model::portfolio::{Portfolio, PortfolioCandidates};
-use crate::model::result::{ResponseResult, TickerAndFraction};
+use crate::model::result::{
+    AnalysisResult, ProbabilityAndReturn, ResponseResult, TickerAndFraction,
+};
 use crate::validation::result::ValidationResult;
 use crate::validation::validate::Validate;
 use rocket::post;
@@ -39,7 +41,7 @@ pub fn validate(portfolio_candidates: &PortfolioCandidates) -> Vec<ValidationRes
         .iter()
         .for_each(|c| all_validation_errors.extend(c.validate()));
 
-    // Remove OK validation result
+    // Remove OK validation result and return
     all_validation_errors
         .into_iter()
         .filter(|vr| vr != &ValidationResult::OK)
@@ -63,7 +65,7 @@ pub fn allocate(portfolio_candidates: PortfolioCandidates) -> Json<ResponseResul
         });
     }
 
-    // TODO: This possibly belongs to validation
+    // TODO: This possibly belongs to validation warning
     // Retain only the candidates that have positive expected value. This would otherwise likely
     // lead to negative fractions (which implies shorting). Note that I said "likely" because I'm
     // not 100% sure, but just have a feeling.
@@ -95,9 +97,19 @@ pub fn allocate(portfolio_candidates: PortfolioCandidates) -> Json<ResponseResul
         })
         .collect();
 
+    let all_outcomes = all_outcomes(&portfolio);
+    let worst_case = worst_case_outcome(&all_outcomes);
+
     Json(ResponseResult {
         allocations: Some(allocation_result),
-        analysis: None,
+        analysis: Some(AnalysisResult {
+            worst_case_outcome: ProbabilityAndReturn {
+                probability: worst_case.probability,
+                weighted_return: worst_case.weighted_return,
+            },
+            cumulative_probability_of_loss: cumulative_probability_of_loss(&all_outcomes),
+            expected_return: expected_return(&portfolio),
+        }),
         validation_errors: None,
     })
 }
