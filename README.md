@@ -4,6 +4,7 @@ Tools to help with capital allocation process.
 
 ## TODO
 
+Minimum:
 - [x] Calculation of expected value
 - [x] Calculation of probability of loss of capital
 - [x] Improve test coverage of company_returns field
@@ -15,6 +16,8 @@ Tools to help with capital allocation process.
 - [ ] Bring back integration tests
 - [ ] Analysis endpoint
 - [ ] Error handling
+
+Future:
 - [ ] API trait with controller and http client
 - [ ] Command line interface
 - [ ] Special (direct) handling of single company Kelly allocation
