@@ -1,9 +1,12 @@
+use log::info;
 use portfolio::model::portfolio::PortfolioCandidates;
 use portfolio::model::result::{ResponseResult, TickerAndFraction};
 use portfolio::validation::result::ValidationResult;
 use portfolio::{allocate, validate};
 use rocket::serde::json::Json;
 use simple_logger::SimpleLogger;
+
+const ASSERTION_TOLERANCE: f64 = 1e-6;
 
 const TEST_YAML: &str = "
           companies:
@@ -136,18 +139,30 @@ fn test_create_candidates_and_validate() {
         candidates.companies[0].scenarios[1].thesis,
         "Core business keeps losing earnings power"
     );
-    assert_eq!(candidates.companies[0].scenarios[1].intrinsic_value, 170.0e9);
+    assert_eq!(
+        candidates.companies[0].scenarios[1].intrinsic_value,
+        170.0e9
+    );
     assert_eq!(candidates.companies[0].scenarios[1].probability, 0.3);
 
     assert_eq!(
         candidates.companies[0].scenarios[2].thesis,
         "Business doesn't grow, earnings kept flat"
     );
-    assert_eq!(candidates.companies[0].scenarios[2].intrinsic_value, 270.0e9);
+    assert_eq!(
+        candidates.companies[0].scenarios[2].intrinsic_value,
+        270.0e9
+    );
     assert_eq!(candidates.companies[0].scenarios[2].probability, 0.5);
 
-    assert_eq!(candidates.companies[0].scenarios[3].thesis, "Earnings grow slightly");
-    assert_eq!(candidates.companies[0].scenarios[3].intrinsic_value, 360.0e9);
+    assert_eq!(
+        candidates.companies[0].scenarios[3].thesis,
+        "Earnings grow slightly"
+    );
+    assert_eq!(
+        candidates.companies[0].scenarios[3].intrinsic_value,
+        360.0e9
+    );
     assert_eq!(candidates.companies[0].scenarios[3].probability, 0.15);
 
     // Last company
@@ -198,6 +213,47 @@ fn test_allocate() {
     let portfolio: Json<ResponseResult> = allocate(candidates);
 
     let tickers_and_fractions: Vec<TickerAndFraction> = portfolio.0.allocations.unwrap();
+    info!("{:?}", tickers_and_fractions);
 
-    // TODO: Assert
+    assert_eq!(tickers_and_fractions[0].ticker, "A".to_string());
+    assert!(
+        (tickers_and_fractions[0].fraction - 0.05066776266911893).abs() < ASSERTION_TOLERANCE,
+        "Expected close to 0.05066776266911893, got {}",
+        tickers_and_fractions[0].fraction
+    );
+
+    assert_eq!(tickers_and_fractions[1].ticker, "B".to_string());
+    assert!(
+        (tickers_and_fractions[1].fraction - 0.28662691955631936).abs() < ASSERTION_TOLERANCE,
+        "Expected close to 0.28662691955631936, got {}",
+        tickers_and_fractions[1].fraction
+    );
+
+    assert_eq!(tickers_and_fractions[2].ticker, "C".to_string());
+    assert!(
+        (tickers_and_fractions[2].fraction - 0.18831794816581915).abs() < ASSERTION_TOLERANCE,
+        "Expected close to 0.18831794816581915, got {}",
+        tickers_and_fractions[2].fraction
+    );
+
+    assert_eq!(tickers_and_fractions[3].ticker, "D".to_string());
+    assert!(
+        (tickers_and_fractions[3].fraction - 0.12277426228476018).abs() < ASSERTION_TOLERANCE,
+        "Expected close to 0.12277426228476018, got {}",
+        tickers_and_fractions[3].fraction
+    );
+
+    assert_eq!(tickers_and_fractions[4].ticker, "E".to_string());
+    assert!(
+        (tickers_and_fractions[4].fraction - 0.16602626739809112).abs() < ASSERTION_TOLERANCE,
+        "Expected close to 0.16602626739809112, got {}",
+        tickers_and_fractions[4].fraction
+    );
+
+    assert_eq!(tickers_and_fractions[5].ticker, "F".to_string());
+    assert!(
+        (tickers_and_fractions[5].fraction - 0.18558683992589134).abs() < ASSERTION_TOLERANCE,
+        "Expected close to 0.18558683992589134, got {}",
+        tickers_and_fractions[5].fraction
+    );
 }
