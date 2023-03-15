@@ -1,8 +1,15 @@
-use portfolio::model::company::Company;
-use portfolio::{allocate, analyse, create_candidates, Portfolio};
+use log::info;
+use portfolio::model::portfolio::PortfolioCandidates;
+use portfolio::model::result::{ResponseResult, TickerAndFraction};
+use portfolio::validation::result::ValidationResult;
+use portfolio::{allocate, validate};
+use rocket::serde::json::Json;
 use simple_logger::SimpleLogger;
 
+const ASSERTION_TOLERANCE: f64 = 1e-6;
+
 const TEST_YAML: &str = "
+          companies:
           - name: A
             ticker: A
             description: Business A
@@ -108,84 +115,145 @@ const TEST_YAML: &str = "
         ";
 
 #[test]
-fn test_create_candidates() {
-    let candidates: Vec<Company> = create_candidates(&TEST_YAML.to_string());
+fn test_create_candidates_and_validate() {
+    let candidates: PortfolioCandidates = serde_yaml::from_str(&TEST_YAML.to_string()).unwrap();
 
-    assert_eq!(candidates.len(), 6);
+    assert_eq!(candidates.companies.len(), 6);
 
     // First company
-    assert_eq!(candidates[0].name, "A");
-    assert_eq!(candidates[0].ticker, "A");
-    assert_eq!(candidates[0].description, "Business A");
-    assert_eq!(candidates[0].market_cap, 238.0e9);
+    assert_eq!(candidates.companies[0].name, "A");
+    assert_eq!(candidates.companies[0].ticker, "A");
+    assert_eq!(candidates.companies[0].description, "Business A");
+    assert_eq!(candidates.companies[0].market_cap, 238.0e9);
 
     // Scenarios for the first company
-    assert_eq!(candidates[0].scenarios.len(), 4);
+    assert_eq!(candidates.companies[0].scenarios.len(), 4);
     assert_eq!(
-        candidates[0].scenarios[0].thesis,
+        candidates.companies[0].scenarios[0].thesis,
         "Unexpected stuff happens"
     );
-    assert_eq!(candidates[0].scenarios[0].intrinsic_value, 0.0);
-    assert_eq!(candidates[0].scenarios[0].probability, 0.05);
+    assert_eq!(candidates.companies[0].scenarios[0].intrinsic_value, 0.0);
+    assert_eq!(candidates.companies[0].scenarios[0].probability, 0.05);
 
     assert_eq!(
-        candidates[0].scenarios[1].thesis,
+        candidates.companies[0].scenarios[1].thesis,
         "Core business keeps losing earnings power"
     );
-    assert_eq!(candidates[0].scenarios[1].intrinsic_value, 170.0e9);
-    assert_eq!(candidates[0].scenarios[1].probability, 0.3);
+    assert_eq!(
+        candidates.companies[0].scenarios[1].intrinsic_value,
+        170.0e9
+    );
+    assert_eq!(candidates.companies[0].scenarios[1].probability, 0.3);
 
     assert_eq!(
-        candidates[0].scenarios[2].thesis,
+        candidates.companies[0].scenarios[2].thesis,
         "Business doesn't grow, earnings kept flat"
     );
-    assert_eq!(candidates[0].scenarios[2].intrinsic_value, 270.0e9);
-    assert_eq!(candidates[0].scenarios[2].probability, 0.5);
+    assert_eq!(
+        candidates.companies[0].scenarios[2].intrinsic_value,
+        270.0e9
+    );
+    assert_eq!(candidates.companies[0].scenarios[2].probability, 0.5);
 
-    assert_eq!(candidates[0].scenarios[3].thesis, "Earnings grow slightly");
-    assert_eq!(candidates[0].scenarios[3].intrinsic_value, 360.0e9);
-    assert_eq!(candidates[0].scenarios[3].probability, 0.15);
+    assert_eq!(
+        candidates.companies[0].scenarios[3].thesis,
+        "Earnings grow slightly"
+    );
+    assert_eq!(
+        candidates.companies[0].scenarios[3].intrinsic_value,
+        360.0e9
+    );
+    assert_eq!(candidates.companies[0].scenarios[3].probability, 0.15);
 
     // Last company
-    assert_eq!(candidates[5].name, "F");
-    assert_eq!(candidates[5].ticker, "F");
-    assert_eq!(candidates[5].description, "Business F");
-    assert_eq!(candidates[5].market_cap, 17.6e6);
+    assert_eq!(candidates.companies[5].name, "F");
+    assert_eq!(candidates.companies[5].ticker, "F");
+    assert_eq!(candidates.companies[5].description, "Business F");
+    assert_eq!(candidates.companies[5].market_cap, 17.6e6);
 
     // Scenarios for the last company
-    assert_eq!(candidates[5].scenarios.len(), 3);
+    assert_eq!(candidates.companies[5].scenarios.len(), 3);
     assert_eq!(
-        candidates[5].scenarios[0].thesis,
+        candidates.companies[5].scenarios[0].thesis,
         "They don't manage to liquidate and just lose all the money"
     );
-    assert_eq!(candidates[5].scenarios[0].intrinsic_value, 0.0);
-    assert_eq!(candidates[5].scenarios[0].probability, 0.05);
+    assert_eq!(candidates.companies[5].scenarios[0].intrinsic_value, 0.0);
+    assert_eq!(candidates.companies[5].scenarios[0].probability, 0.05);
 
     assert_eq!(
-        candidates[5].scenarios[1].thesis,
+        candidates.companies[5].scenarios[1].thesis,
         "They liquidate without realizing assets in escrow account, assuming significant quarterly \
         cash loss until liquidation\n"
     );
-    assert_eq!(candidates[5].scenarios[1].intrinsic_value, 10.0e6);
-    assert_eq!(candidates[5].scenarios[1].probability, 0.25);
+    assert_eq!(candidates.companies[5].scenarios[1].intrinsic_value, 10.0e6);
+    assert_eq!(candidates.companies[5].scenarios[1].probability, 0.25);
 
     assert_eq!(
-        candidates[5].scenarios[2].thesis,
+        candidates.companies[5].scenarios[2].thesis,
         "They liquidate everything, assuming reasonable cash loss until liquidation"
     );
-    assert_eq!(candidates[5].scenarios[2].intrinsic_value, 25.0e6);
-    assert_eq!(candidates[5].scenarios[2].probability, 0.7);
+    assert_eq!(candidates.companies[5].scenarios[2].intrinsic_value, 25.0e6);
+    assert_eq!(candidates.companies[5].scenarios[2].probability, 0.7);
+
+    // Assert that there are no validation issues
+    let validation_errors: Vec<ValidationResult> = validate(&candidates);
+    assert_eq!(validation_errors, vec![]);
 }
 
 #[test]
-fn test_allocate_and_analyze() {
+fn test_allocate() {
     // Initialize logger
     SimpleLogger::new().init().unwrap();
 
-    // TODO: Add assertions after refactoring the data classes and interfaces
-    let candidates: Vec<Company> = create_candidates(&TEST_YAML.to_string());
+    // Create candidates and validate them
+    let candidates: PortfolioCandidates = serde_yaml::from_str(&TEST_YAML.to_string()).unwrap();
+    let validation_errors: Vec<ValidationResult> = validate(&candidates);
+    assert_eq!(validation_errors, vec![]);
 
-    let portfolio: Portfolio = allocate(candidates);
+    let portfolio: Json<ResponseResult> = allocate(candidates);
 
-    analyse(&portfolio);
+    let tickers_and_fractions: Vec<TickerAndFraction> = portfolio.0.allocations.unwrap();
+    info!("{:?}", tickers_and_fractions);
+
+    assert_eq!(tickers_and_fractions[0].ticker, "A".to_string());
+    assert!(
+        (tickers_and_fractions[0].fraction - 0.05066776266911893).abs() < ASSERTION_TOLERANCE,
+        "Expected close to 0.05066776266911893, got {}",
+        tickers_and_fractions[0].fraction
+    );
+
+    assert_eq!(tickers_and_fractions[1].ticker, "B".to_string());
+    assert!(
+        (tickers_and_fractions[1].fraction - 0.28662691955631936).abs() < ASSERTION_TOLERANCE,
+        "Expected close to 0.28662691955631936, got {}",
+        tickers_and_fractions[1].fraction
+    );
+
+    assert_eq!(tickers_and_fractions[2].ticker, "C".to_string());
+    assert!(
+        (tickers_and_fractions[2].fraction - 0.18831794816581915).abs() < ASSERTION_TOLERANCE,
+        "Expected close to 0.18831794816581915, got {}",
+        tickers_and_fractions[2].fraction
+    );
+
+    assert_eq!(tickers_and_fractions[3].ticker, "D".to_string());
+    assert!(
+        (tickers_and_fractions[3].fraction - 0.12277426228476018).abs() < ASSERTION_TOLERANCE,
+        "Expected close to 0.12277426228476018, got {}",
+        tickers_and_fractions[3].fraction
+    );
+
+    assert_eq!(tickers_and_fractions[4].ticker, "E".to_string());
+    assert!(
+        (tickers_and_fractions[4].fraction - 0.16602626739809112).abs() < ASSERTION_TOLERANCE,
+        "Expected close to 0.16602626739809112, got {}",
+        tickers_and_fractions[4].fraction
+    );
+
+    assert_eq!(tickers_and_fractions[5].ticker, "F".to_string());
+    assert!(
+        (tickers_and_fractions[5].fraction - 0.18558683992589134).abs() < ASSERTION_TOLERANCE,
+        "Expected close to 0.18558683992589134, got {}",
+        tickers_and_fractions[5].fraction
+    );
 }

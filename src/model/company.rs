@@ -55,9 +55,9 @@ impl Validate for Company {
 impl Company {
     /// Validates that we have at least one scenario
     fn validate_at_least_one_scenario(&self) -> ValidationResult {
-        return if self.scenarios.is_empty() {
+        if self.scenarios.is_empty() {
             ValidationResult::PROBLEM(Problem {
-                code: "no-scenarios-for-company",
+                code: "no-scenarios-for-company".to_string(),
                 message: format!(
                     "No scenarios found for {} with ticker {}.",
                     self.name, self.ticker
@@ -66,7 +66,7 @@ impl Company {
             })
         } else {
             ValidationResult::OK
-        };
+        }
     }
 
     /// Validates that all scenarios have a unique thesis
@@ -74,9 +74,9 @@ impl Company {
         let n_unique_scenarios =
             HashSet::<Scenario>::from_iter(self.scenarios.iter().cloned()).len();
 
-        return if self.scenarios.len() != n_unique_scenarios {
+        if self.scenarios.len() != n_unique_scenarios {
             ValidationResult::PROBLEM(Problem {
-                code: "scenarios-are-not-unique",
+                code: "scenarios-are-not-unique".to_string(),
                 message: format!(
                     "Not all scenarios have a unique thesis for company {}. Check your input.",
                     self.name
@@ -85,7 +85,7 @@ impl Company {
             })
         } else {
             ValidationResult::OK
-        };
+        }
     }
 
     /// Validates that all probabilities across all scenarios sum up close to 1
@@ -96,15 +96,15 @@ impl Company {
             .map(|scenario| scenario.probability)
             .sum();
 
-        return if (sum - 1.0).abs() > TOLERANCE {
+        if (sum - 1.0).abs() > TOLERANCE {
             ValidationResult::PROBLEM(Problem {
-                code: "probabilities-for-all-scenarios-do-not-sum-up-to-one",
+                code: "probabilities-for-all-scenarios-do-not-sum-up-to-one".to_string(),
                 message: format!("Probabilities of all scenarios do not sum up to 1. Sum = {sum}."),
                 severity: Severity::ERROR,
             })
         } else {
             ValidationResult::OK
-        };
+        }
     }
 
     /// Validate all scenarios individually
@@ -208,7 +208,7 @@ mod test {
         assert!(test_company
             .validate()
             .contains(&ValidationResult::PROBLEM(Problem {
-                code: "no-scenarios-for-company",
+                code: "no-scenarios-for-company".to_string(),
                 message: "No scenarios found for Some Company with ticker SC.".to_string(),
                 severity: Severity::ERROR,
             })));
@@ -238,7 +238,7 @@ mod test {
         assert!(test_company
             .validate()
             .contains(&ValidationResult::PROBLEM(Problem {
-            code: "scenarios-are-not-unique",
+            code: "scenarios-are-not-unique".to_string(),
             message:
                 "Not all scenarios have a unique thesis for company Some Company. Check your input."
                     .to_string(),
@@ -270,7 +270,7 @@ mod test {
         assert!(test_company
             .validate()
             .contains(&ValidationResult::PROBLEM(Problem {
-                code: "probabilities-for-all-scenarios-do-not-sum-up-to-one",
+                code: "probabilities-for-all-scenarios-do-not-sum-up-to-one".to_string(),
                 message: "Probabilities of all scenarios do not sum up to 1. Sum = 0.8."
                     .to_string(),
                 severity: Severity::ERROR,
