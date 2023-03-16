@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 /// All results contained inside a response to the client
 /// TODO: Add expected errors here as well
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct ResponseResult {
+pub struct AllocationResult {
     pub allocations: Option<Vec<TickerAndFraction>>,
     pub analysis: Option<AnalysisResult>,
     pub validation_errors: Option<Vec<ValidationResult>>,

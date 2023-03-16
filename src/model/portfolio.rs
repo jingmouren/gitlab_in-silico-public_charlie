@@ -12,6 +12,46 @@ pub struct Portfolio {
     pub portfolio_companies: Vec<PortfolioCompany>,
 }
 
+#[rocket::async_trait]
+impl<'r> FromData<'r> for Portfolio {
+    type Error = String; // TODO: Convert to error code enum
+
+    async fn from_data(request: &'r Request<'_>, data: Data<'r>) -> Outcome<'r, Self> {
+        // Ensure the content type is correct before opening the data.
+        if request.content_type() != Some(&ContentType::JSON) {
+            info!("Did not receive JSON, returning.");
+            return Outcome::Forward(data);
+        }
+
+        // Read the data into a String, return 500 if it fails
+        let string = match data.open(1024.kilobytes()).into_string().await {
+            Ok(string) if string.is_complete() => string.into_inner(),
+            Ok(_) => return Failure((Status::PayloadTooLarge, "Too large".to_string())),
+            Err(e) => {
+                error!(
+                    "Unable to read data from the request. Request: {:?}",
+                    request
+                );
+                return Failure((Status::InternalServerError, format!("{e}")));
+            }
+        };
+
+        // Handle deserialization errors, return 400 if it fails
+        let portfolio: Portfolio = match serde_json::from_str(&string) {
+            Ok(r) => r,
+            Err(e) => {
+                info!(
+                    "Did not manage to deserialize payload into portfolio. Error: {:?}",
+                    e
+                );
+                return Failure((Status::BadRequest, format!("{e}")));
+            }
+        };
+
+        Success(portfolio)
+    }
+}
+
 /// Portfolio company represents a company with an associated allocation fraction
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct PortfolioCompany {

@@ -1,5 +1,5 @@
-mod allocation;
-mod analysis;
+pub mod allocation;
+pub mod analysis;
 pub mod api;
 pub mod model;
 pub mod validation;
@@ -9,16 +9,13 @@ use crate::analysis::{all_outcomes, worst_case_outcome};
 use crate::analysis::{cumulative_probability_of_loss, expected_return};
 use crate::model::portfolio::{Portfolio, PortfolioCandidates};
 use crate::model::result::{
-    AnalysisResult, ProbabilityAndReturn, ResponseResult, TickerAndFraction,
+    AllocationResult, AnalysisResult, ProbabilityAndReturn, TickerAndFraction,
 };
 use crate::validation::result::ValidationResult;
 use crate::validation::validate::Validate;
 use rocket::post;
 use rocket::serde::json::Json;
 use std::collections::HashSet;
-
-/// TODO
-///  - Re-introduce integration tests
 
 /// Creates a vector of candidate companies from YAML
 pub fn create_candidates(yaml_string: &str) -> PortfolioCandidates {
@@ -52,11 +49,11 @@ pub fn validate(portfolio_candidates: &PortfolioCandidates) -> Vec<ValidationRes
     format = "application/json",
     data = "<portfolio_candidates>"
 )]
-pub fn allocate(portfolio_candidates: PortfolioCandidates) -> Json<ResponseResult> {
+pub fn allocate(portfolio_candidates: PortfolioCandidates) -> Json<AllocationResult> {
     // TODO: Distinguish between warnings and errors
     let validation_errors: Vec<ValidationResult> = validate(&portfolio_candidates);
     if !validation_errors.is_empty() {
-        return Json(ResponseResult {
+        return Json(AllocationResult {
             allocations: None,
             analysis: None,
             validation_errors: Some(validation_errors),
@@ -98,7 +95,7 @@ pub fn allocate(portfolio_candidates: PortfolioCandidates) -> Json<ResponseResul
     let all_outcomes = all_outcomes(&portfolio);
     let worst_case = worst_case_outcome(&all_outcomes);
 
-    Json(ResponseResult {
+    Json(AllocationResult {
         allocations: Some(allocation_result),
         analysis: Some(AnalysisResult {
             worst_case_outcome: ProbabilityAndReturn {
@@ -113,10 +110,17 @@ pub fn allocate(portfolio_candidates: PortfolioCandidates) -> Json<ResponseResul
 }
 
 /// Calculates and prints useful information about the portfolio
-pub fn analyse(portfolio: &Portfolio) {
-    expected_return(portfolio);
+#[post("/analyze", format = "application/json", data = "<portfolio>")]
+pub fn analyze(portfolio: Portfolio) -> Json<AnalysisResult> {
+    let all_outcomes = all_outcomes(&portfolio);
+    let worst_case = worst_case_outcome(&all_outcomes);
 
-    let all_outcomes = all_outcomes(portfolio);
-    worst_case_outcome(&all_outcomes);
-    cumulative_probability_of_loss(&all_outcomes);
+    Json(AnalysisResult {
+        worst_case_outcome: ProbabilityAndReturn {
+            probability: worst_case.probability,
+            weighted_return: worst_case.weighted_return,
+        },
+        cumulative_probability_of_loss: cumulative_probability_of_loss(&all_outcomes),
+        expected_return: expected_return(&portfolio),
+    })
 }

@@ -8,7 +8,7 @@ use num_traits::pow::Pow;
 /// Tolerance for converging the fraction during Newton-Raphson iteration. Corresponds to 1%, which
 /// is more than enough given that the real uncertainty lies in the input data and not here.
 const FRACTION_TOLERANCE: f64 = 1e-2;
-pub(crate) const MAX_ITER: u32 = 1000;
+pub const MAX_ITER: u32 = 1000;
 
 /// Calculates allocation factors (fractions) for each company based on the Kelly criterion, by
 /// solving N nonlinear equations (N = number of candidates) using the Newton-Raphson algorithm

@@ -13,14 +13,21 @@ Minimum:
 - [x] Logging instead of printing
 - [x] Refactor validation
 - [x] Server POC
-- [ ] Bring back integration tests
-- [ ] Analysis endpoint
+- [x] Bring back integration tests
+- [x] Analysis endpoint
 - [ ] Error handling
 
-Future:
+Future improvements:
+- [ ] Improve test coverage
+- [ ] Create/find macro for assertion with tolerance
 - [ ] API trait with controller and http client
 - [ ] Command line interface
 - [ ] Special (direct) handling of single company Kelly allocation
+
+Future features:
+- [ ] Constraint for maximum allowable risk of permanent loss of capital
+- [ ] Constraint for no shorting (instead of filtering based on negative expected value)
+- [ ] Constraint for no leverage (instead of normalization)
 
 
 ## Investment process

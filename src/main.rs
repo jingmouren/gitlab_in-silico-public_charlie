@@ -1,9 +1,11 @@
 #[macro_use]
 extern crate rocket;
 
-use portfolio::allocate;
+use portfolio::{allocate, analyze};
+use simple_logger::SimpleLogger;
 
 #[launch]
 fn rocket() -> _ {
-    rocket::build().mount("/", routes![allocate])
+    SimpleLogger::new().init().unwrap();
+    rocket::build().mount("/", routes![allocate, analyze])
 }

@@ -1,10 +1,9 @@
-use log::info;
+use portfolio::allocation::{kelly_allocate, MAX_ITER};
 use portfolio::model::portfolio::PortfolioCandidates;
-use portfolio::model::result::{ResponseResult, TickerAndFraction};
+use portfolio::model::result::{AllocationResult, AnalysisResult, TickerAndFraction};
 use portfolio::validation::result::ValidationResult;
-use portfolio::{allocate, validate};
+use portfolio::{allocate, analyze, validate};
 use rocket::serde::json::Json;
-use simple_logger::SimpleLogger;
 
 const ASSERTION_TOLERANCE: f64 = 1e-6;
 
@@ -202,18 +201,17 @@ fn test_create_candidates_and_validate() {
 
 #[test]
 fn test_allocate() {
-    // Initialize logger
-    SimpleLogger::new().init().unwrap();
-
     // Create candidates and validate them
     let candidates: PortfolioCandidates = serde_yaml::from_str(&TEST_YAML.to_string()).unwrap();
     let validation_errors: Vec<ValidationResult> = validate(&candidates);
     assert_eq!(validation_errors, vec![]);
 
-    let portfolio: Json<ResponseResult> = allocate(candidates);
-
+    // Allocate
+    let portfolio: Json<AllocationResult> = allocate(candidates);
     let tickers_and_fractions: Vec<TickerAndFraction> = portfolio.0.allocations.unwrap();
-    info!("{:?}", tickers_and_fractions);
+
+    // Print out the result for convenience
+    println!("{:?}", tickers_and_fractions);
 
     assert_eq!(tickers_and_fractions[0].ticker, "A".to_string());
     assert!(
@@ -255,5 +253,45 @@ fn test_allocate() {
         (tickers_and_fractions[5].fraction - 0.18558683992589134).abs() < ASSERTION_TOLERANCE,
         "Expected close to 0.18558683992589134, got {}",
         tickers_and_fractions[5].fraction
+    );
+}
+
+#[test]
+fn test_analyze() {
+    // Create candidates and validate them
+    let candidates: PortfolioCandidates = serde_yaml::from_str(&TEST_YAML.to_string()).unwrap();
+    let validation_errors: Vec<ValidationResult> = validate(&candidates);
+    assert_eq!(validation_errors, vec![]);
+
+    // Allocate and analyze
+    let portfolio = kelly_allocate(candidates.companies, MAX_ITER);
+    let analysis_result: Json<AnalysisResult> = analyze(portfolio);
+
+    // Print out the result for convenience
+    println!("{:?}", analysis_result);
+
+    assert!(
+        (analysis_result.worst_case_outcome.probability - 3.125e-7).abs() < ASSERTION_TOLERANCE,
+        "Expected close to 3.125e-7, got {}",
+        analysis_result.worst_case_outcome.probability
+    );
+    assert!(
+        (analysis_result.worst_case_outcome.weighted_return + 0.9333626536941269).abs()
+            < ASSERTION_TOLERANCE,
+        "Expected close to -0.9333626536941269, got {}",
+        analysis_result.worst_case_outcome.weighted_return
+    );
+
+    assert!(
+        (analysis_result.cumulative_probability_of_loss - 0.18054531249999986).abs()
+            < ASSERTION_TOLERANCE,
+        "Expected close to 0.18054531249999986, got {}",
+        analysis_result.cumulative_probability_of_loss
+    );
+
+    assert!(
+        (analysis_result.expected_return - 0.4274474630482845).abs() < ASSERTION_TOLERANCE,
+        "Expected close to 0.4274474630482845, got {}",
+        analysis_result.expected_return
     );
 }
