@@ -17,16 +17,6 @@ use rocket::post;
 use rocket::serde::json::Json;
 use std::collections::HashSet;
 
-/// Creates a vector of candidate companies from YAML
-pub fn create_candidates(yaml_string: &str) -> PortfolioCandidates {
-    // Deserialize candidates from yaml (TODO: Missing error handling)
-    let candidates: PortfolioCandidates = serde_yaml::from_str(yaml_string).unwrap();
-
-    validate(&candidates);
-
-    candidates
-}
-
 /// Validate the candidates and return all problematic validations
 pub fn validate(portfolio_candidates: &PortfolioCandidates) -> Vec<ValidationResult> {
     let mut all_validation_errors: HashSet<ValidationResult> = HashSet::new();
