@@ -1,6 +1,5 @@
 pub mod allocation;
 pub mod analysis;
-pub mod api;
 pub mod model;
 pub mod validation;
 
@@ -47,6 +46,8 @@ pub fn allocate(portfolio_candidates: PortfolioCandidates) -> Json<AllocationRes
             allocations: None,
             analysis: None,
             validation_errors: Some(validation_errors),
+            errors: None,
+            warnings: None,
         });
     }
 
@@ -71,7 +72,18 @@ pub fn allocate(portfolio_candidates: PortfolioCandidates) -> Json<AllocationRes
     //  1. Add info statement for filtered candidates
     //  2. Filter also the "perfect candidates (the ones without any downside)
 
-    let portfolio = kelly_allocate(filtered_candidates, MAX_ITER);
+    let portfolio = match kelly_allocate(filtered_candidates, MAX_ITER) {
+        Ok(p) => p,
+        Err(e) => {
+            return Json(AllocationResult {
+                allocations: None,
+                analysis: None,
+                validation_errors: None,
+                errors: Some(e),
+                warnings: None,
+            })
+        }
+    };
 
     let allocation_result: Vec<TickerAndFraction> = portfolio
         .portfolio_companies
@@ -82,7 +94,18 @@ pub fn allocate(portfolio_candidates: PortfolioCandidates) -> Json<AllocationRes
         })
         .collect();
 
-    let all_outcomes = all_outcomes(&portfolio);
+    let all_outcomes = match all_outcomes(&portfolio) {
+        Ok(o) => o,
+        Err(e) => {
+            return Json(AllocationResult {
+                allocations: None,
+                analysis: None,
+                validation_errors: None,
+                errors: Some(e),
+                warnings: None,
+            })
+        }
+    };
     let worst_case = worst_case_outcome(&all_outcomes);
 
     Json(AllocationResult {
@@ -96,13 +119,28 @@ pub fn allocate(portfolio_candidates: PortfolioCandidates) -> Json<AllocationRes
             expected_return: expected_return(&portfolio),
         }),
         validation_errors: None,
+        errors: None,
+        warnings: None,
     })
 }
 
 /// Calculates and prints useful information about the portfolio
 #[post("/analyze", format = "application/json", data = "<portfolio>")]
 pub fn analyze(portfolio: Portfolio) -> Json<AnalysisResult> {
-    let all_outcomes = all_outcomes(&portfolio);
+    let all_outcomes = match all_outcomes(&portfolio) {
+        Ok(o) => o,
+        // TODO: Return an error in the response
+        Err(_e) => {
+            return Json(AnalysisResult {
+                worst_case_outcome: ProbabilityAndReturn {
+                    probability: 0.0,
+                    weighted_return: 0.0,
+                },
+                cumulative_probability_of_loss: 0.0,
+                expected_return: 0.0,
+            })
+        }
+    };
     let worst_case = worst_case_outcome(&all_outcomes);
 
     Json(AnalysisResult {

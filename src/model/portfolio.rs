@@ -14,7 +14,7 @@ pub struct Portfolio {
 
 #[rocket::async_trait]
 impl<'r> FromData<'r> for Portfolio {
-    type Error = String; // TODO: Convert to error code enum
+    type Error = String;
 
     async fn from_data(request: &'r Request<'_>, data: Data<'r>) -> Outcome<'r, Self> {
         // Ensure the content type is correct before opening the data.
@@ -67,7 +67,7 @@ pub struct PortfolioCandidates {
 
 #[rocket::async_trait]
 impl<'r> FromData<'r> for PortfolioCandidates {
-    type Error = String; // TODO: Convert to error code enum
+    type Error = String;
 
     async fn from_data(request: &'r Request<'_>, data: Data<'r>) -> Outcome<'r, Self> {
         // Ensure the content type is correct before opening the data.

@@ -264,7 +264,7 @@ fn test_analyze() {
     assert_eq!(validation_errors, vec![]);
 
     // Allocate and analyze
-    let portfolio = kelly_allocate(candidates.companies, MAX_ITER);
+    let portfolio = kelly_allocate(candidates.companies, MAX_ITER).unwrap();
     let analysis_result: Json<AnalysisResult> = analyze(portfolio);
 
     // Print out the result for convenience
