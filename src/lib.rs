@@ -7,9 +7,7 @@ use crate::allocation::{kelly_allocate, MAX_ITER};
 use crate::analysis::{all_outcomes, worst_case_outcome};
 use crate::analysis::{cumulative_probability_of_loss, expected_return};
 use crate::model::portfolio::{Portfolio, PortfolioCandidates};
-use crate::model::result::{
-    AllocationResult, AnalysisResult, ProbabilityAndReturn, TickerAndFraction,
-};
+use crate::model::responses::{AllocationResponse, AllocationResult, AnalysisResponse, AnalysisResult, ProbabilityAndReturn, TickerAndFraction};
 use crate::validation::result::ValidationResult;
 use crate::validation::validate::Validate;
 use rocket::post;
@@ -38,15 +36,14 @@ pub fn validate(portfolio_candidates: &PortfolioCandidates) -> Vec<ValidationRes
     format = "application/json",
     data = "<portfolio_candidates>"
 )]
-pub fn allocate(portfolio_candidates: PortfolioCandidates) -> Json<AllocationResult> {
+pub fn allocate(portfolio_candidates: PortfolioCandidates) -> Json<AllocationResponse> {
     // TODO: Distinguish between warnings and errors
     let validation_errors: Vec<ValidationResult> = validate(&portfolio_candidates);
     if !validation_errors.is_empty() {
-        return Json(AllocationResult {
-            allocations: None,
-            analysis: None,
+        return Json(AllocationResponse {
+            result: None,
             validation_errors: Some(validation_errors),
-            errors: None,
+            error: None,
             warnings: None,
         });
     }
@@ -75,18 +72,17 @@ pub fn allocate(portfolio_candidates: PortfolioCandidates) -> Json<AllocationRes
     let portfolio = match kelly_allocate(filtered_candidates, MAX_ITER) {
         Ok(p) => p,
         Err(e) => {
-            return Json(AllocationResult {
-                allocations: None,
-                analysis: None,
+            return Json(AllocationResponse {
+                result: None,
                 validation_errors: None,
-                errors: Some(e),
+                error: Some(e),
                 warnings: None,
             })
         }
     };
 
     let allocation_result: Vec<TickerAndFraction> = portfolio
-        .portfolio_companies
+        .companies
         .iter()
         .map(|pc| TickerAndFraction {
             ticker: pc.company.ticker.clone(),
@@ -97,20 +93,51 @@ pub fn allocate(portfolio_candidates: PortfolioCandidates) -> Json<AllocationRes
     let all_outcomes = match all_outcomes(&portfolio) {
         Ok(o) => o,
         Err(e) => {
-            return Json(AllocationResult {
-                allocations: None,
-                analysis: None,
+            return Json(AllocationResponse {
+                result: None,
                 validation_errors: None,
-                errors: Some(e),
+                error: Some(e),
                 warnings: None,
             })
         }
     };
     let worst_case = worst_case_outcome(&all_outcomes);
 
-    Json(AllocationResult {
-        allocations: Some(allocation_result),
-        analysis: Some(AnalysisResult {
+    Json(AllocationResponse {
+        result: Some(AllocationResult {
+            allocations: allocation_result,
+            analysis: AnalysisResult {
+                worst_case_outcome: ProbabilityAndReturn {
+                    probability: worst_case.probability,
+                    weighted_return: worst_case.weighted_return,
+                },
+                cumulative_probability_of_loss: cumulative_probability_of_loss(&all_outcomes),
+                expected_return: expected_return(&portfolio),
+            }
+        }),
+        validation_errors: None,
+        error: None,
+        warnings: None,
+    })
+}
+
+/// Calculates and prints useful information about the portfolio
+#[post("/analyze", format = "application/json", data = "<portfolio>")]
+pub fn analyze(portfolio: Portfolio) -> Json<AnalysisResponse> {
+    let all_outcomes = match all_outcomes(&portfolio) {
+        Ok(o) => o,
+        Err(e) => {
+            return Json(AnalysisResponse {
+                result: None,
+                error: Some(e),
+                warnings: None,
+            })
+        }
+    };
+    let worst_case = worst_case_outcome(&all_outcomes);
+
+    Json(AnalysisResponse {
+        result: Some(AnalysisResult {
             worst_case_outcome: ProbabilityAndReturn {
                 probability: worst_case.probability,
                 weighted_return: worst_case.weighted_return,
@@ -118,37 +145,7 @@ pub fn allocate(portfolio_candidates: PortfolioCandidates) -> Json<AllocationRes
             cumulative_probability_of_loss: cumulative_probability_of_loss(&all_outcomes),
             expected_return: expected_return(&portfolio),
         }),
-        validation_errors: None,
-        errors: None,
+        error: None,
         warnings: None,
-    })
-}
-
-/// Calculates and prints useful information about the portfolio
-#[post("/analyze", format = "application/json", data = "<portfolio>")]
-pub fn analyze(portfolio: Portfolio) -> Json<AnalysisResult> {
-    let all_outcomes = match all_outcomes(&portfolio) {
-        Ok(o) => o,
-        // TODO: Return an error in the response
-        Err(_e) => {
-            return Json(AnalysisResult {
-                worst_case_outcome: ProbabilityAndReturn {
-                    probability: 0.0,
-                    weighted_return: 0.0,
-                },
-                cumulative_probability_of_loss: 0.0,
-                expected_return: 0.0,
-            })
-        }
-    };
-    let worst_case = worst_case_outcome(&all_outcomes);
-
-    Json(AnalysisResult {
-        worst_case_outcome: ProbabilityAndReturn {
-            probability: worst_case.probability,
-            weighted_return: worst_case.weighted_return,
-        },
-        cumulative_probability_of_loss: cumulative_probability_of_loss(&all_outcomes),
-        expected_return: expected_return(&portfolio),
     })
 }

@@ -16,9 +16,9 @@ pub struct Outcome {
 /// Returns all possible outcomes (expected portfolio return and associated probability)
 pub fn all_outcomes(portfolio: &Portfolio) -> Result<Vec<Outcome>, Error> {
     // Number of different outcomes is a product of number of all scenarios for all companies
-    let n_outcomes = if !portfolio.portfolio_companies.is_empty() {
+    let n_outcomes = if !portfolio.companies.is_empty() {
         portfolio
-            .portfolio_companies
+            .companies
             .iter()
             .map(|pc| pc.company.scenarios.len())
             .product()
@@ -42,9 +42,9 @@ pub fn all_outcomes(portfolio: &Portfolio) -> Result<Vec<Outcome>, Error> {
     let mut outcomes: Vec<Outcome> = Vec::with_capacity(n_outcomes);
 
     // 2. Helper vectors keeping track of current indices for scenarios of all companies
-    let mut scenario_indices: Vec<usize> = vec![0; portfolio.portfolio_companies.len()];
+    let mut scenario_indices: Vec<usize> = vec![0; portfolio.companies.len()];
     let n_scenarios: Vec<usize> = portfolio
-        .portfolio_companies
+        .companies
         .iter()
         .map(|pc| pc.company.scenarios.len())
         .collect();
@@ -56,11 +56,11 @@ pub fn all_outcomes(portfolio: &Portfolio) -> Result<Vec<Outcome>, Error> {
         let mut outcome = Outcome {
             weighted_return: 0.0,
             probability: 1.0,
-            company_returns: HashMap::with_capacity(portfolio.portfolio_companies.len()),
+            company_returns: HashMap::with_capacity(portfolio.companies.len()),
         };
 
         portfolio
-            .portfolio_companies
+            .companies
             .iter()
             .enumerate()
             .for_each(|(ticker_id, pc)| {
@@ -100,7 +100,7 @@ pub fn all_outcomes(portfolio: &Portfolio) -> Result<Vec<Outcome>, Error> {
 /// Calculates expected return of a portfolio
 pub fn expected_return(portfolio: &Portfolio) -> f64 {
     let expected_return: f64 = portfolio
-        .portfolio_companies
+        .companies
         .iter()
         .map(|pc| {
             let market_cap = pc.company.market_cap;
@@ -180,7 +180,7 @@ mod test {
     /// A helper function that creates portfolio with three assets used in a couple of tests
     fn get_test_portfolio_with_three_assets() -> Portfolio {
         let test_portfolio: Portfolio = Portfolio {
-            portfolio_companies: vec![
+            companies: vec![
                 // Fair coin flip
                 PortfolioCompany {
                     company: Company {
@@ -261,7 +261,7 @@ mod test {
     #[test]
     fn test_expected_value_single_fair_coin_flip() {
         let test_portfolio: Portfolio = Portfolio {
-            portfolio_companies: vec![PortfolioCompany {
+            companies: vec![PortfolioCompany {
                 company: Company {
                     name: "Fair coin flip".to_string(),
                     ticker: "A".to_string(),
@@ -290,7 +290,7 @@ mod test {
     #[test]
     fn test_expected_value_single_biased_coin_flip() {
         let test_portfolio: Portfolio = Portfolio {
-            portfolio_companies: vec![PortfolioCompany {
+            companies: vec![PortfolioCompany {
                 company: Company {
                     name: "Biased coin flip".to_string(),
                     ticker: "B".to_string(),
@@ -327,7 +327,7 @@ mod test {
     fn test_all_outcomes_no_assets() {
         // Create an empty portfolio and attempt to calculate all outcomes, which fails
         let test_portfolio = Portfolio {
-            portfolio_companies: vec![],
+            companies: vec![],
         };
         let all_outcomes = all_outcomes(&test_portfolio).unwrap();
 
@@ -338,10 +338,10 @@ mod test {
     fn test_all_outcomes_too_many_assets_and_scenarios() {
         // Create a portfolio with 16 companies, each with 2 scenarios
         let mut test_portfolio: Portfolio = Portfolio {
-            portfolio_companies: vec![],
+            companies: vec![],
         };
         for i in 0..16 {
-            test_portfolio.portfolio_companies.push(PortfolioCompany {
+            test_portfolio.companies.push(PortfolioCompany {
                 company: Company {
                     name: format!("{i}"),
                     ticker: format!("{i}"),

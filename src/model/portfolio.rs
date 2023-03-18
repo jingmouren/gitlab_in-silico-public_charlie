@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 /// Portfolio has a list of portfolio companies
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Portfolio {
-    pub portfolio_companies: Vec<PortfolioCompany>,
+    pub companies: Vec<PortfolioCompany>,
 }
 
 #[rocket::async_trait]

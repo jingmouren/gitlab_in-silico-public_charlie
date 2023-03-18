@@ -1,6 +1,6 @@
 use portfolio::allocation::{kelly_allocate, MAX_ITER};
 use portfolio::model::portfolio::PortfolioCandidates;
-use portfolio::model::result::{AllocationResult, AnalysisResult, TickerAndFraction};
+use portfolio::model::responses::{AllocationResponse, TickerAndFraction};
 use portfolio::validation::result::ValidationResult;
 use portfolio::{allocate, analyze, validate};
 use rocket::serde::json::Json;
@@ -207,8 +207,8 @@ fn test_allocate() {
     assert_eq!(validation_errors, vec![]);
 
     // Allocate
-    let portfolio: Json<AllocationResult> = allocate(candidates);
-    let tickers_and_fractions: Vec<TickerAndFraction> = portfolio.0.allocations.unwrap();
+    let portfolio: Json<AllocationResponse> = allocate(candidates);
+    let tickers_and_fractions: Vec<TickerAndFraction> = portfolio.0.result.unwrap().allocations;
 
     // Print out the result for convenience
     println!("{:?}", tickers_and_fractions);
@@ -265,7 +265,8 @@ fn test_analyze() {
 
     // Allocate and analyze
     let portfolio = kelly_allocate(candidates.companies, MAX_ITER).unwrap();
-    let analysis_result: Json<AnalysisResult> = analyze(portfolio);
+    let analysis_response = analyze(portfolio);
+    let analysis_result = analysis_response.0.result.unwrap();
 
     // Print out the result for convenience
     println!("{:?}", analysis_result);

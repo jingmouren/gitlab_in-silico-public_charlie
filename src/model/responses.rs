@@ -3,14 +3,28 @@ use crate::model::errors::{Error, Warning};
 use crate::validation::result::ValidationResult;
 use serde::{Deserialize, Serialize};
 
-/// All results contained inside a response to the client
+/// Response of the call to the allocate endpoint, contains results of both allocation and analysis
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct AllocationResponse {
+    pub result: Option<AllocationResult>,
+    pub validation_errors: Option<Vec<ValidationResult>>,
+    pub error: Option<Error>,
+    pub warnings: Option<Vec<Warning>>,
+}
+
+/// Response of the call to the analyze endpoint
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct AnalysisResponse {
+    pub result: Option<AnalysisResult>,
+    pub error: Option<Error>,
+    pub warnings: Option<Vec<Warning>>,
+}
+
+/// Allocation result includes tickers and their fractions
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct AllocationResult {
-    pub allocations: Option<Vec<TickerAndFraction>>,
-    pub analysis: Option<AnalysisResult>,
-    pub validation_errors: Option<Vec<ValidationResult>>,
-    pub errors: Option<Error>,
-    pub warnings: Option<Vec<Warning>>,
+    pub allocations: Vec<TickerAndFraction>,
+    pub analysis: AnalysisResult,
 }
 
 /// Analysis result includes some statistics for a given portfolio

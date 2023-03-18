@@ -12,10 +12,11 @@ Minimum:
 - [x] Bring back integration tests
 - [x] Analysis endpoint
 - [x] Error handling
-- [ ] Refactor data models: move them into appropriate modules and simplify composition
+- [x] Refactor data models: move them into appropriate modules and simplify composition
 - [ ] Add warning if a company got filtered
 - [ ] Add filtering for companies without downside
 - [ ] Run a server and post two examples in the pipeline
+- [ ] Generate OpenAPI schema for input and output data models
 
 Future improvements:
 - [ ] Improve test coverage
