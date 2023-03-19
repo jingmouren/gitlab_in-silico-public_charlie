@@ -46,6 +46,8 @@ impl Validate for Company {
         validation_results.insert(self.validate_at_least_one_scenario());
         validation_results.insert(self.validate_all_scenarios_unique());
         validation_results.insert(self.validate_probabilities_sum_up_to_one());
+        validation_results.insert(self.validate_negative_expected_return());
+        validation_results.insert(self.validate_no_downside_scenario());
         validation_results.extend(self.validate_all_scenarios());
 
         validation_results
@@ -101,6 +103,55 @@ impl Company {
                 code: "probabilities-for-all-scenarios-do-not-sum-up-to-one".to_string(),
                 message: format!("Probabilities of all scenarios do not sum up to 1. Sum = {sum}."),
                 severity: Severity::ERROR,
+            })
+        } else {
+            ValidationResult::OK
+        }
+    }
+
+    /// Return a validation warning if a company has a negative expected return. Within this
+    /// framework (no shorting), this doesn't make sense.
+    pub fn validate_negative_expected_return(&self) -> ValidationResult {
+        let expected_return = self
+            .scenarios
+            .iter()
+            .map(|s| s.probability * (s.intrinsic_value - self.market_cap) / self.market_cap)
+            .sum::<f64>();
+
+        if expected_return < 0.0 {
+            ValidationResult::PROBLEM(Problem {
+                code: "negative-expected-return-for-a-company".to_string(),
+                message: format!(
+                    "Found negative expected return of {:.1}% for {}. This is not supported in the \
+                    current framework because we want to prohibit shorting.",
+                    100.0 * expected_return,
+                    self.ticker
+                ),
+                severity: Severity::WARNING,
+            })
+        } else {
+            ValidationResult::OK
+        }
+    }
+
+    /// Return a validation warning if a company doesn't have any downside scenario. This causes
+    /// numerical failure because in this framework, the solution is to put an infinite bet on this
+    /// company
+    pub fn validate_no_downside_scenario(&self) -> ValidationResult {
+        let has_no_downside = self.scenarios.iter().all(|s| {
+            s.probability * (s.intrinsic_value - self.market_cap) / self.market_cap > -TOLERANCE
+        });
+
+        if has_no_downside {
+            ValidationResult::PROBLEM(Problem {
+                code: "company-with-no-downside-scenario".to_string(),
+                message: format!(
+                    "Company {} doesn't have at least one downside scenario. This is not supported \
+                    in the current framework because the algorithm would try and tell you to put \
+                    all your money on this company.",
+                    self.ticker
+                ),
+                severity: Severity::WARNING,
             })
         } else {
             ValidationResult::OK
@@ -274,6 +325,72 @@ mod test {
                 message: "Probabilities of all scenarios do not sum up to 1. Sum = 0.8."
                     .to_string(),
                 severity: Severity::ERROR,
+            })));
+    }
+
+    #[test]
+    fn test_validate_validate_negative_expected_return() {
+        let test_company: Company = Company {
+            name: "Some Company".to_string(),
+            ticker: "SC".to_string(),
+            description: "Company with negative expected return.".to_string(),
+            market_cap: 5e5,
+            scenarios: vec![
+                Scenario {
+                    thesis: "Loss.".to_string(),
+                    intrinsic_value: 1e5,
+                    probability: 0.5,
+                },
+                Scenario {
+                    thesis: "Zero return.".to_string(),
+                    intrinsic_value: 5e5,
+                    probability: 0.5,
+                },
+            ],
+        };
+
+        assert!(test_company
+            .validate()
+            .contains(&ValidationResult::PROBLEM(Problem {
+                code: "negative-expected-return-for-a-company".to_string(),
+                message:
+                    "Found negative expected return of -40.0% for SC. This is not supported in the \
+                    current framework because we want to prohibit shorting."
+                        .to_string(),
+                severity: Severity::WARNING,
+            })));
+    }
+
+    #[test]
+    fn test_validate_no_downside_scenario() {
+        let test_company: Company = Company {
+            name: "Some Company".to_string(),
+            ticker: "SC".to_string(),
+            description: "Company with no downside.".to_string(),
+            market_cap: 5e5,
+            scenarios: vec![
+                Scenario {
+                    thesis: "Breakeven.".to_string(),
+                    intrinsic_value: 5e5,
+                    probability: 0.5,
+                },
+                Scenario {
+                    thesis: "Double.".to_string(),
+                    intrinsic_value: 1e6,
+                    probability: 0.5,
+                },
+            ],
+        };
+
+        assert!(test_company
+            .validate()
+            .contains(&ValidationResult::PROBLEM(Problem {
+                code: "company-with-no-downside-scenario".to_string(),
+                message: "Company SC doesn't have at least one downside scenario. This is not \
+                    supported in the current framework because the algorithm would try and tell \
+                    you to put all your money on this company."
+                    .to_string(),
+                severity: Severity::WARNING,
             })));
     }
 

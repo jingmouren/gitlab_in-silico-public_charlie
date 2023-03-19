@@ -13,10 +13,11 @@ Minimum:
 - [x] Analysis endpoint
 - [x] Error handling
 - [x] Refactor data models: move them into appropriate modules and simplify composition
-- [ ] Add warning if a company got filtered
-- [ ] Add filtering for companies without downside
+- [x] Add warning if a company got filtered
+- [x] Add filtering for companies without downside
 - [ ] Run a server and post two examples in the pipeline
 - [ ] Generate OpenAPI schema for input and output data models
+- [ ] Update README.md
 
 Future improvements:
 - [ ] Improve test coverage

@@ -326,9 +326,7 @@ mod test {
     #[test]
     fn test_all_outcomes_no_assets() {
         // Create an empty portfolio and attempt to calculate all outcomes, which fails
-        let test_portfolio = Portfolio {
-            companies: vec![],
-        };
+        let test_portfolio = Portfolio { companies: vec![] };
         let all_outcomes = all_outcomes(&test_portfolio).unwrap();
 
         assert_eq!(all_outcomes, vec![]);
@@ -337,9 +335,7 @@ mod test {
     #[test]
     fn test_all_outcomes_too_many_assets_and_scenarios() {
         // Create a portfolio with 16 companies, each with 2 scenarios
-        let mut test_portfolio: Portfolio = Portfolio {
-            companies: vec![],
-        };
+        let mut test_portfolio: Portfolio = Portfolio { companies: vec![] };
         for i in 0..16 {
             test_portfolio.companies.push(PortfolioCompany {
                 company: Company {

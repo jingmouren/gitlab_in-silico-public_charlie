@@ -1,5 +1,5 @@
 use crate::model::company::Ticker;
-use crate::model::errors::{Error, Warning};
+use crate::model::errors::Error;
 use crate::validation::result::ValidationResult;
 use serde::{Deserialize, Serialize};
 
@@ -7,9 +7,8 @@ use serde::{Deserialize, Serialize};
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct AllocationResponse {
     pub result: Option<AllocationResult>,
-    pub validation_errors: Option<Vec<ValidationResult>>,
+    pub validation_problems: Option<Vec<ValidationResult>>,
     pub error: Option<Error>,
-    pub warnings: Option<Vec<Warning>>,
 }
 
 /// Response of the call to the analyze endpoint
@@ -17,7 +16,6 @@ pub struct AllocationResponse {
 pub struct AnalysisResponse {
     pub result: Option<AnalysisResult>,
     pub error: Option<Error>,
-    pub warnings: Option<Vec<Warning>>,
 }
 
 /// Allocation result includes tickers and their fractions
