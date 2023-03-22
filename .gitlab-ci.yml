@@ -29,7 +29,7 @@ audit:
     - cargo install cargo-audit
     - cargo audit
 
-test:
+tests:
   stage: test
   script:
     - cargo test
@@ -37,3 +37,13 @@ test:
     #  https://github.com/xd009642/tarpaulin/issues/146#issuecomment-554302029
     # - cargo install cargo-tarpaulin
     # - cargo tarpaulin --ignore-tests
+
+server-test:
+  stage: test
+  script:
+    # Run the server and sleep 10 seconds for it to start (TODO: Improve by adding health endpoint)
+    - cargo build --release
+    - nohup cargo run --release &
+    - sleep 10
+    - cargo run --example allocate_client
+    - cargo run --example analyze_client

@@ -15,11 +15,12 @@ Minimum:
 - [x] Refactor data models: move them into appropriate modules and simplify composition
 - [x] Add warning if a company got filtered
 - [x] Add filtering for companies without downside
-- [ ] Run a server and post two examples in the pipeline
+- [x] Run a server and post two examples in the pipeline
 - [ ] Generate OpenAPI schema for input and output data models
-- [ ] Update README.md
+- [ ] Logging with trace (try logging from rocket)
 
 Future improvements:
+- [ ] Update README.md
 - [ ] Improve test coverage
 - [ ] Create/find macro for assertion with tolerance
 - [ ] API trait with controller and http client
