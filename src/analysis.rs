@@ -1,4 +1,5 @@
 use crate::model::company::Ticker;
+use crate::model::errors::Error;
 use crate::model::portfolio::Portfolio;
 use log::info;
 use ordered_float::OrderedFloat;
@@ -13,11 +14,11 @@ pub struct Outcome {
 }
 
 /// Returns all possible outcomes (expected portfolio return and associated probability)
-pub fn all_outcomes(portfolio: &Portfolio) -> Vec<Outcome> {
+pub fn all_outcomes(portfolio: &Portfolio) -> Result<Vec<Outcome>, Error> {
     // Number of different outcomes is a product of number of all scenarios for all companies
-    let n_outcomes = if !portfolio.portfolio_companies.is_empty() {
+    let n_outcomes = if !portfolio.companies.is_empty() {
         portfolio
-            .portfolio_companies
+            .companies
             .iter()
             .map(|pc| pc.company.scenarios.len())
             .product()
@@ -26,11 +27,14 @@ pub fn all_outcomes(portfolio: &Portfolio) -> Vec<Outcome> {
     };
 
     if n_outcomes > 50000 {
-        panic!(
-            "You have {n_outcomes} different outcomes for your portfolio. This software is \
-            designed for a focused investment strategy, and it seems you have too many companies \
-            or too many scenarios for companies.",
-        )
+        return Err(Error {
+            code: "more-than-fifty-thousand-outcomes".to_string(),
+            message: format!(
+                "You have {n_outcomes} different outcomes for your portfolio. This \
+            software is designed for a focused investment strategy, and it seems you have too many \
+            companies or too many scenarios for companies.",
+            ),
+        });
     }
 
     // Mutable data that's populated/modified within the loop below
@@ -38,9 +42,9 @@ pub fn all_outcomes(portfolio: &Portfolio) -> Vec<Outcome> {
     let mut outcomes: Vec<Outcome> = Vec::with_capacity(n_outcomes);
 
     // 2. Helper vectors keeping track of current indices for scenarios of all companies
-    let mut scenario_indices: Vec<usize> = vec![0; portfolio.portfolio_companies.len()];
+    let mut scenario_indices: Vec<usize> = vec![0; portfolio.companies.len()];
     let n_scenarios: Vec<usize> = portfolio
-        .portfolio_companies
+        .companies
         .iter()
         .map(|pc| pc.company.scenarios.len())
         .collect();
@@ -52,11 +56,11 @@ pub fn all_outcomes(portfolio: &Portfolio) -> Vec<Outcome> {
         let mut outcome = Outcome {
             weighted_return: 0.0,
             probability: 1.0,
-            company_returns: HashMap::with_capacity(portfolio.portfolio_companies.len()),
+            company_returns: HashMap::with_capacity(portfolio.companies.len()),
         };
 
         portfolio
-            .portfolio_companies
+            .companies
             .iter()
             .enumerate()
             .for_each(|(ticker_id, pc)| {
@@ -90,13 +94,13 @@ pub fn all_outcomes(portfolio: &Portfolio) -> Vec<Outcome> {
         }
     }
 
-    outcomes
+    Ok(outcomes)
 }
 
 /// Calculates expected return of a portfolio
 pub fn expected_return(portfolio: &Portfolio) -> f64 {
     let expected_return: f64 = portfolio
-        .portfolio_companies
+        .companies
         .iter()
         .map(|pc| {
             let market_cap = pc.company.market_cap;
@@ -123,7 +127,12 @@ pub fn worst_case_outcome(outcomes: &[Outcome]) -> &Outcome {
     let worst_case_outcome = outcomes
         .iter()
         .min_by_key(|o| OrderedFloat(o.weighted_return))
-        .unwrap(); // TODO: Handle errors
+        .unwrap_or_else(|| {
+            panic!(
+                "Did not manage to find the worst case outcome in the list of outcomes: {:?}",
+                outcomes
+            )
+        });
 
     info!(
         "Worst case outcome implies permanent loss of {:.1}% of invested assets with probability {:.6}%",
@@ -171,7 +180,7 @@ mod test {
     /// A helper function that creates portfolio with three assets used in a couple of tests
     fn get_test_portfolio_with_three_assets() -> Portfolio {
         let test_portfolio: Portfolio = Portfolio {
-            portfolio_companies: vec![
+            companies: vec![
                 // Fair coin flip
                 PortfolioCompany {
                     company: Company {
@@ -252,7 +261,7 @@ mod test {
     #[test]
     fn test_expected_value_single_fair_coin_flip() {
         let test_portfolio: Portfolio = Portfolio {
-            portfolio_companies: vec![PortfolioCompany {
+            companies: vec![PortfolioCompany {
                 company: Company {
                     name: "Fair coin flip".to_string(),
                     ticker: "A".to_string(),
@@ -281,7 +290,7 @@ mod test {
     #[test]
     fn test_expected_value_single_biased_coin_flip() {
         let test_portfolio: Portfolio = Portfolio {
-            portfolio_companies: vec![PortfolioCompany {
+            companies: vec![PortfolioCompany {
                 company: Company {
                     name: "Biased coin flip".to_string(),
                     ticker: "B".to_string(),
@@ -317,23 +326,18 @@ mod test {
     #[test]
     fn test_all_outcomes_no_assets() {
         // Create an empty portfolio and attempt to calculate all outcomes, which fails
-        let test_portfolio = Portfolio {
-            portfolio_companies: vec![],
-        };
-        let all_outcomes = all_outcomes(&test_portfolio);
+        let test_portfolio = Portfolio { companies: vec![] };
+        let all_outcomes = all_outcomes(&test_portfolio).unwrap();
 
         assert_eq!(all_outcomes, vec![]);
     }
 
     #[test]
-    #[should_panic(expected = "You have 65536 different outcomes for your portfolio.")]
     fn test_all_outcomes_too_many_assets_and_scenarios() {
         // Create a portfolio with 16 companies, each with 2 scenarios
-        let mut test_portfolio: Portfolio = Portfolio {
-            portfolio_companies: vec![],
-        };
+        let mut test_portfolio: Portfolio = Portfolio { companies: vec![] };
         for i in 0..16 {
-            test_portfolio.portfolio_companies.push(PortfolioCompany {
+            test_portfolio.companies.push(PortfolioCompany {
                 company: Company {
                     name: format!("{i}"),
                     ticker: format!("{i}"),
@@ -357,13 +361,17 @@ mod test {
         }
 
         // Should fail because there's more than 50000 outcomes
-        all_outcomes(&test_portfolio);
+        let e = all_outcomes(&test_portfolio).err().unwrap();
+        assert_eq!(e.code, "more-than-fifty-thousand-outcomes");
+        assert!(e
+            .message
+            .contains("You have 65536 different outcomes for your portfolio."));
     }
 
     #[test]
     fn test_all_outcomes_three_assets() {
         let test_portfolio = get_test_portfolio_with_three_assets();
-        let all_outcomes = all_outcomes(&test_portfolio);
+        let all_outcomes = all_outcomes(&test_portfolio).unwrap();
 
         assert_eq!(
             all_outcomes,
@@ -483,7 +491,7 @@ mod test {
     #[test]
     fn test_worst_case_scenario() {
         let test_portfolio = get_test_portfolio_with_three_assets();
-        let all_outcomes = all_outcomes(&test_portfolio);
+        let all_outcomes = all_outcomes(&test_portfolio).unwrap();
         let worst_case = worst_case_outcome(&all_outcomes);
 
         assert_eq!(
@@ -503,7 +511,7 @@ mod test {
     #[test]
     fn test_cumulative_probability_of_loss() {
         let test_portfolio = get_test_portfolio_with_three_assets();
-        let all_outcomes = all_outcomes(&test_portfolio);
+        let all_outcomes = all_outcomes(&test_portfolio).unwrap();
         let cumulative_probability_of_loss = cumulative_probability_of_loss(&all_outcomes);
 
         assert!((cumulative_probability_of_loss - 0.22).abs() < company::TOLERANCE);

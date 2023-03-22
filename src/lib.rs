@@ -1,46 +1,37 @@
-mod allocation;
-mod analysis;
-pub mod api;
+pub mod allocation;
+pub mod analysis;
 pub mod model;
 pub mod validation;
 
 use crate::allocation::{kelly_allocate, MAX_ITER};
 use crate::analysis::{all_outcomes, worst_case_outcome};
 use crate::analysis::{cumulative_probability_of_loss, expected_return};
+use crate::model::company::Company;
+use crate::model::errors::Error;
 use crate::model::portfolio::{Portfolio, PortfolioCandidates};
-use crate::model::result::{
-    AnalysisResult, ProbabilityAndReturn, ResponseResult, TickerAndFraction,
+use crate::model::responses::{
+    AllocationResponse, AllocationResult, AnalysisResponse, AnalysisResult, ProbabilityAndReturn,
+    TickerAndFraction,
 };
+use crate::validation::result::Severity::ERROR;
 use crate::validation::result::ValidationResult;
 use crate::validation::validate::Validate;
+use log::info;
 use rocket::post;
 use rocket::serde::json::Json;
 use std::collections::HashSet;
 
-/// TODO
-///  - Re-introduce integration tests
-
-/// Creates a vector of candidate companies from YAML
-pub fn create_candidates(yaml_string: &str) -> PortfolioCandidates {
-    // Deserialize candidates from yaml (TODO: Missing error handling)
-    let candidates: PortfolioCandidates = serde_yaml::from_str(yaml_string).unwrap();
-
-    validate(&candidates);
-
-    candidates
-}
-
 /// Validate the candidates and return all problematic validations
 pub fn validate(portfolio_candidates: &PortfolioCandidates) -> Vec<ValidationResult> {
-    let mut all_validation_errors: HashSet<ValidationResult> = HashSet::new();
+    let mut all_validation_results: HashSet<ValidationResult> = HashSet::new();
 
     portfolio_candidates
         .companies
         .iter()
-        .for_each(|c| all_validation_errors.extend(c.validate()));
+        .for_each(|c| all_validation_results.extend(c.validate()));
 
     // Remove OK validation result and return
-    all_validation_errors
+    all_validation_results
         .into_iter()
         .filter(|vr| vr != &ValidationResult::OK)
         .collect()
@@ -52,42 +43,71 @@ pub fn validate(portfolio_candidates: &PortfolioCandidates) -> Vec<ValidationRes
     format = "application/json",
     data = "<portfolio_candidates>"
 )]
-pub fn allocate(portfolio_candidates: PortfolioCandidates) -> Json<ResponseResult> {
-    // TODO: Distinguish between warnings and errors
-    let validation_errors: Vec<ValidationResult> = validate(&portfolio_candidates);
-    if !validation_errors.is_empty() {
-        return Json(ResponseResult {
-            allocations: None,
-            analysis: None,
-            validation_errors: Some(validation_errors),
+pub fn allocate(portfolio_candidates: PortfolioCandidates) -> Json<AllocationResponse> {
+    // Return immediately if there is at least one validation error
+    let validation_problems: Vec<ValidationResult> = validate(&portfolio_candidates);
+    if validation_problems.iter().any(|v| match v {
+        ValidationResult::PROBLEM(p) => p.severity == ERROR,
+        ValidationResult::OK => false,
+    }) {
+        return Json(AllocationResponse {
+            result: None,
+            validation_problems: Some(validation_problems),
+            error: None,
         });
     }
 
-    // TODO: This possibly belongs to validation warning
-    // Retain only the candidates that have positive expected value. This would otherwise likely
-    // lead to negative fractions (which implies shorting). Note that I said "likely" because I'm
-    // not 100% sure, but just have a feeling.
-    let filtered_candidates = portfolio_candidates
-        .companies
-        .iter()
-        .cloned()
-        .filter(|c| {
-            c.scenarios
-                .iter()
-                .map(|s| s.probability * (s.intrinsic_value - c.market_cap) / c.market_cap)
-                .sum::<f64>()
-                > 0.0
-        })
-        .collect();
+    // Create a subset of all candidates that can be handled by the algorithm. We don't allow:
+    // 1. Candidates that have a negative expected return (would result in shorting),
+    // 2. Candidates that don't have any downside (would result in numerical failure because the
+    //    mathematical solution is to put an infinite amount of levered money into it)
+    let mut filtered_candidates: Vec<Company> = vec![];
+    portfolio_candidates.companies.into_iter().for_each(|c| {
+        let downside_validation = c.validate_no_downside_scenario();
+        match &downside_validation {
+            ValidationResult::PROBLEM(problem) => info!("{}", problem.message),
+            ValidationResult::OK => (),
+        }
 
-    // TODO:
-    //  1. Add info statement for filtered candidates
-    //  2. Filter also the "perfect candidates (the ones without any downside)
+        let negative_expected_return_validation = c.validate_negative_expected_return();
+        match &negative_expected_return_validation {
+            ValidationResult::PROBLEM(problem) => info!("{}", problem.message),
+            ValidationResult::OK => (),
+        }
 
-    let portfolio = kelly_allocate(filtered_candidates, MAX_ITER);
+        // If both of these validation are ok, add the company
+        if downside_validation == ValidationResult::OK
+            && negative_expected_return_validation == ValidationResult::OK
+        {
+            filtered_candidates.push(c)
+        }
+    });
+
+    // Return if there are no companies after filtering
+    if filtered_candidates.is_empty() {
+        return Json(AllocationResponse {
+            result: None,
+            validation_problems: Some(validation_problems),
+            error: Some(Error {
+                code: "no-valid-candidates-for-allocation".to_string(),
+                message: "Found no valid candidates for allocation. Check your input.".to_string(),
+            }),
+        });
+    }
+
+    let portfolio = match kelly_allocate(filtered_candidates, MAX_ITER) {
+        Ok(p) => p,
+        Err(e) => {
+            return Json(AllocationResponse {
+                result: None,
+                validation_problems: Some(validation_problems),
+                error: Some(e),
+            })
+        }
+    };
 
     let allocation_result: Vec<TickerAndFraction> = portfolio
-        .portfolio_companies
+        .companies
         .iter()
         .map(|pc| TickerAndFraction {
             ticker: pc.company.ticker.clone(),
@@ -95,12 +115,51 @@ pub fn allocate(portfolio_candidates: PortfolioCandidates) -> Json<ResponseResul
         })
         .collect();
 
-    let all_outcomes = all_outcomes(&portfolio);
+    let all_outcomes = match all_outcomes(&portfolio) {
+        Ok(o) => o,
+        Err(e) => {
+            return Json(AllocationResponse {
+                result: None,
+                validation_problems: None,
+                error: Some(e),
+            })
+        }
+    };
     let worst_case = worst_case_outcome(&all_outcomes);
 
-    Json(ResponseResult {
-        allocations: Some(allocation_result),
-        analysis: Some(AnalysisResult {
+    Json(AllocationResponse {
+        result: Some(AllocationResult {
+            allocations: allocation_result,
+            analysis: AnalysisResult {
+                worst_case_outcome: ProbabilityAndReturn {
+                    probability: worst_case.probability,
+                    weighted_return: worst_case.weighted_return,
+                },
+                cumulative_probability_of_loss: cumulative_probability_of_loss(&all_outcomes),
+                expected_return: expected_return(&portfolio),
+            },
+        }),
+        validation_problems: Some(validation_problems),
+        error: None,
+    })
+}
+
+/// Calculates and prints useful information about the portfolio
+#[post("/analyze", format = "application/json", data = "<portfolio>")]
+pub fn analyze(portfolio: Portfolio) -> Json<AnalysisResponse> {
+    let all_outcomes = match all_outcomes(&portfolio) {
+        Ok(o) => o,
+        Err(e) => {
+            return Json(AnalysisResponse {
+                result: None,
+                error: Some(e),
+            })
+        }
+    };
+    let worst_case = worst_case_outcome(&all_outcomes);
+
+    Json(AnalysisResponse {
+        result: Some(AnalysisResult {
             worst_case_outcome: ProbabilityAndReturn {
                 probability: worst_case.probability,
                 weighted_return: worst_case.weighted_return,
@@ -108,15 +167,6 @@ pub fn allocate(portfolio_candidates: PortfolioCandidates) -> Json<ResponseResul
             cumulative_probability_of_loss: cumulative_probability_of_loss(&all_outcomes),
             expected_return: expected_return(&portfolio),
         }),
-        validation_errors: None,
+        error: None,
     })
-}
-
-/// Calculates and prints useful information about the portfolio
-pub fn analyse(portfolio: &Portfolio) {
-    expected_return(portfolio);
-
-    let all_outcomes = all_outcomes(portfolio);
-    worst_case_outcome(&all_outcomes);
-    cumulative_probability_of_loss(&all_outcomes);
 }

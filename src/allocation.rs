@@ -1,5 +1,6 @@
 use crate::analysis::{all_outcomes, Outcome};
 use crate::model::company::Company;
+use crate::model::errors::Error;
 use crate::model::portfolio::{Portfolio, PortfolioCompany};
 use log::info;
 use nalgebra::{DMatrix, DVector};
@@ -8,11 +9,11 @@ use num_traits::pow::Pow;
 /// Tolerance for converging the fraction during Newton-Raphson iteration. Corresponds to 1%, which
 /// is more than enough given that the real uncertainty lies in the input data and not here.
 const FRACTION_TOLERANCE: f64 = 1e-2;
-pub(crate) const MAX_ITER: u32 = 1000;
+pub const MAX_ITER: u32 = 1000;
 
 /// Calculates allocation factors (fractions) for each company based on the Kelly criterion, by
 /// solving N nonlinear equations (N = number of candidates) using the Newton-Raphson algorithm
-pub fn kelly_allocate(candidates: Vec<Company>, max_iter: u32) -> Portfolio {
+pub fn kelly_allocate(candidates: Vec<Company>, max_iter: u32) -> Result<Portfolio, Error> {
     // Initial guess for fractions assumes uniform allocation across all companies
     let n_companies: usize = candidates.len();
     let uniform_fraction: f64 = 1.0 / n_companies as f64;
@@ -21,7 +22,7 @@ pub fn kelly_allocate(candidates: Vec<Company>, max_iter: u32) -> Portfolio {
     // Get all outcomes for a list of candidates. Note that the fractions are not relevant here
     // since we only care about non-weighted company returns and probability
     let mut portfolio: Portfolio = Portfolio {
-        portfolio_companies: candidates
+        companies: candidates
             .into_iter()
             .map(|c| PortfolioCompany {
                 company: c,
@@ -29,13 +30,16 @@ pub fn kelly_allocate(candidates: Vec<Company>, max_iter: u32) -> Portfolio {
             })
             .collect(),
     };
-    let outcomes: Vec<Outcome> = all_outcomes(&portfolio);
+    let outcomes: Vec<Outcome> = match all_outcomes(&portfolio) {
+        Ok(o) => o,
+        Err(e) => return Err(e),
+    };
 
     let mut counter: u32 = 0;
     loop {
         // Update the fractions in the portfolio for calculating Kelly function and Jacobian
         portfolio
-            .portfolio_companies
+            .companies
             .iter_mut()
             .enumerate()
             .for_each(|(i, pc)| pc.fraction = fractions[i]);
@@ -44,12 +48,20 @@ pub fn kelly_allocate(candidates: Vec<Company>, max_iter: u32) -> Portfolio {
         let jacobian: DMatrix<f64> = kelly_criterion_jacobian(&outcomes, &portfolio);
         let right_hand_side: DVector<f64> = -kelly_criterion(&outcomes, &portfolio);
 
-        // TODO: Error handling
         // Solve for delta_f and update the fractions in the portfolio
-        let delta_f: DVector<f64> = jacobian
-            .try_inverse()
-            .expect("Failed to invert the Jacobian.")
-            * &right_hand_side;
+        let inverse_jacobian: DMatrix<f64> = match jacobian.try_inverse() {
+            Some(s) => s,
+            None => return Err(Error {
+                code: "jacobian-inversion-failed".to_string(),
+                message:
+                    "Did not manage to find the numerical solution. This may happen if the input \
+                    data would suggest a very strong bias towards a single/few investments. \
+                    Check your input."
+                        .to_string(),
+            }),
+        };
+
+        let delta_f: DVector<f64> = inverse_jacobian * &right_hand_side;
         fractions += &delta_f;
 
         // Convergence check (with Chebyshev/L-infinity norm)
@@ -60,7 +72,14 @@ pub fn kelly_allocate(candidates: Vec<Company>, max_iter: u32) -> Portfolio {
 
         // Maximum iterations check in case we diverge
         if counter >= max_iter {
-            panic!("Convergence not achieved within {max_iter} iterations.")
+            return Err(Error {
+                code: "newton-raphson-didnt-converge".to_string(),
+                message:
+                    "Did not manage to find the numerical solution. This may happen if the input \
+                    data would suggest a very strong bias towards a single/few investments. \
+                    Check your input."
+                        .to_string(),
+            });
         }
 
         counter += 1
@@ -70,16 +89,19 @@ pub fn kelly_allocate(candidates: Vec<Company>, max_iter: u32) -> Portfolio {
     // we filter out candidates with negative expected value (at least I think, I'm not 100% sure
     // since I didn't work on a mathematical proof: it's just my feeling)
     if fractions.min() < 0.0 {
-        panic!(
-            "Found at least one negative fraction, which implies shorting. This is not supported. \
-            Fractions are: {fractions}."
-        )
+        return Err(Error {
+            code: "negative-fraction-after-solution".to_string(),
+            message: format!(
+                "Found at least one negative fraction, which implies shorting. This \
+            should not happen. Fractions are: {fractions}."
+            ),
+        });
     }
 
     // Normalize the fractions such that their sum is equal to one. This essentially means that we
     // do not want to use leverage.
-    // TODO: Pretty sure that implicitly constraining with e.g. Lagrange multipliers to have
-    //  sum(f) = 1 is equivalent to just normalizing after solving, but not 100% sure. Think more.
+    // TODO: Not sure whether implicitly constraining with e.g. Lagrange multipliers to have
+    //  sum(f) = 1 is equivalent to just normalizing after solving. Think more.
     let sum_fractions = fractions.sum();
     if sum_fractions > 1.0 {
         info!(
@@ -91,27 +113,28 @@ pub fn kelly_allocate(candidates: Vec<Company>, max_iter: u32) -> Portfolio {
 
     // Update the fractions in portfolio and return
     portfolio
-        .portfolio_companies
+        .companies
         .iter_mut()
         .enumerate()
         .for_each(|(i, pc)| pc.fraction = fractions[i]);
-    portfolio
+
+    Ok(portfolio)
 }
 
 /// Calculates the Kelly criterion given all outcomes and portfolio
 fn kelly_criterion(outcomes: &[Outcome], portfolio: &Portfolio) -> DVector<f64> {
-    let n_companies = portfolio.portfolio_companies.len();
+    let n_companies = portfolio.companies.len();
 
     let kelly: DVector<f64> = DVector::from_iterator(
         n_companies,
-        portfolio.portfolio_companies.iter().map(|pc_outer| {
+        portfolio.companies.iter().map(|pc_outer| {
             outcomes
                 .iter()
                 .map(|o| {
                     o.probability * o.company_returns[&pc_outer.company.ticker]
                         / (1.0
                             + portfolio
-                                .portfolio_companies
+                                .companies
                                 .iter()
                                 .map(|pc| pc.fraction * o.company_returns[&pc.company.ticker])
                                 .sum::<f64>())
@@ -125,14 +148,14 @@ fn kelly_criterion(outcomes: &[Outcome], portfolio: &Portfolio) -> DVector<f64> 
 
 /// Calculates the Jacobian for the Kelly function given all outcomes and portfolio
 fn kelly_criterion_jacobian(outcomes: &[Outcome], portfolio: &Portfolio) -> DMatrix<f64> {
-    let n_companies: usize = portfolio.portfolio_companies.len();
+    let n_companies: usize = portfolio.companies.len();
     let mut jacobian: DMatrix<f64> = DMatrix::zeros(n_companies, n_companies);
 
     // Note: Jacobian for this system is symmetric, that's why we loop only over the upper triangle
     for row_index in 0..n_companies {
         for column_index in row_index..n_companies {
-            let row_company: &Company = &portfolio.portfolio_companies[row_index].company;
-            let column_company: &Company = &portfolio.portfolio_companies[column_index].company;
+            let row_company: &Company = &portfolio.companies[row_index].company;
+            let column_company: &Company = &portfolio.companies[column_index].company;
 
             jacobian[(row_index, column_index)] = -outcomes
                 .iter()
@@ -142,7 +165,7 @@ fn kelly_criterion_jacobian(outcomes: &[Outcome], portfolio: &Portfolio) -> DMat
                         * o.company_returns[&column_company.ticker]
                         * (1.0
                             + portfolio
-                                .portfolio_companies
+                                .companies
                                 .iter()
                                 .map(|pc| pc.fraction * o.company_returns[&pc.company.ticker])
                                 .sum::<f64>())
@@ -213,7 +236,7 @@ mod test {
     /// Helper function for generating test data used in unit tests
     fn generate_test_data(test_candidates: &Vec<Company>) -> (Portfolio, Vec<Outcome>) {
         let portfolio: Portfolio = Portfolio {
-            portfolio_companies: vec![
+            companies: vec![
                 PortfolioCompany {
                     company: test_candidates[0].clone(),
                     fraction: 0.5,
@@ -307,18 +330,18 @@ mod test {
     #[test]
     fn test_allocate() {
         let test_candidates: Vec<Company> = generate_test_candidates();
-        let portfolio: Portfolio = kelly_allocate(test_candidates, MAX_ITER);
+        let portfolio: Portfolio = kelly_allocate(test_candidates, MAX_ITER).unwrap();
 
-        assert_eq!(portfolio.portfolio_companies.len(), 2);
+        assert_eq!(portfolio.companies.len(), 2);
         assert!(
-            (portfolio.portfolio_companies[0].fraction - 0.180609).abs() < ASSERTION_TOLERANCE,
+            (portfolio.companies[0].fraction - 0.180609).abs() < ASSERTION_TOLERANCE,
             "Expected close to 0.180609, got {}",
-            portfolio.portfolio_companies[0].fraction
+            portfolio.companies[0].fraction
         );
         assert!(
-            (portfolio.portfolio_companies[1].fraction - 0.819391).abs() < ASSERTION_TOLERANCE,
+            (portfolio.companies[1].fraction - 0.819391).abs() < ASSERTION_TOLERANCE,
             "Expected close to 0.819391, got {}",
-            portfolio.portfolio_companies[1].fraction
+            portfolio.companies[1].fraction
         );
     }
 
@@ -344,28 +367,27 @@ mod test {
             ],
         }];
 
-        let portfolio: Portfolio = kelly_allocate(test_candidates, MAX_ITER);
+        let portfolio: Portfolio = kelly_allocate(test_candidates, MAX_ITER).unwrap();
 
-        assert_eq!(portfolio.portfolio_companies.len(), 1);
+        assert_eq!(portfolio.companies.len(), 1);
         assert!(
-            (portfolio.portfolio_companies[0].fraction - 0.5).abs() < ASSERTION_TOLERANCE,
+            (portfolio.companies[0].fraction - 0.5).abs() < ASSERTION_TOLERANCE,
             "Expected close to 0.5, got {}",
-            portfolio.portfolio_companies[0].fraction
+            portfolio.companies[0].fraction
         );
     }
 
     #[test]
-    #[should_panic(expected = "Convergence not achieved within 1 iterations.")]
-    fn test_allocate_panics_when_maximum_iterations_exceeded() {
-        kelly_allocate(generate_test_candidates(), 1);
+    fn test_allocate_returns_an_error_when_maximum_iterations_exceeded() {
+        let e = kelly_allocate(generate_test_candidates(), 1).err().unwrap();
+        assert_eq!(e.code, "newton-raphson-didnt-converge");
+        assert!(e
+            .message
+            .contains("Did not manage to find the numerical solution."));
     }
 
     #[test]
-    #[should_panic(
-        expected = "Found at least one negative fraction, which implies shorting. This is not \
-            supported. Fractions are: "
-    )]
-    fn test_allocate_panics_with_a_candidate_for_shorting() {
+    fn test_allocate_returns_an_error_with_a_candidate_for_shorting() {
         let mut test_candidates: Vec<Company> = generate_test_candidates();
         test_candidates.push(Company {
             name: "Stupid investment".to_string(),
@@ -386,12 +408,16 @@ mod test {
                 },
             ],
         });
-        kelly_allocate(test_candidates, MAX_ITER);
+
+        let e = kelly_allocate(test_candidates, MAX_ITER).err().unwrap();
+        assert_eq!(e.code, "negative-fraction-after-solution");
+        assert!(e
+            .message
+            .contains("Found at least one negative fraction, which implies shorting."));
     }
 
     #[test]
-    #[should_panic(expected = "Failed to invert the Jacobian.")]
-    fn test_allocate_panics_with_a_candidate_with_no_downside() {
+    fn test_allocate_returns_an_error_with_a_candidate_with_no_downside() {
         let mut test_candidates: Vec<Company> = generate_test_candidates();
         test_candidates.push(Company {
             name: "Best investment that implies infinite bet".to_string(),
@@ -411,6 +437,11 @@ mod test {
                 },
             ],
         });
-        kelly_allocate(test_candidates, MAX_ITER);
+
+        let e = kelly_allocate(test_candidates, MAX_ITER).err().unwrap();
+        assert_eq!(e.code, "jacobian-inversion-failed");
+        assert!(e
+            .message
+            .contains("Did not manage to find the numerical solution."));
     }
 }

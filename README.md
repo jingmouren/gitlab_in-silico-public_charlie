@@ -2,27 +2,6 @@
 
 Tools to help with capital allocation process.
 
-## TODO
-
-Minimum:
-- [x] Calculation of expected value
-- [x] Calculation of probability of loss of capital
-- [x] Improve test coverage of company_returns field
-- [x] Allocation via Kelly's formula for multiple investments
-- [x] Integration tests
-- [x] Logging instead of printing
-- [x] Refactor validation
-- [x] Server POC
-- [ ] Bring back integration tests
-- [ ] Analysis endpoint
-- [ ] Error handling
-
-Future:
-- [ ] API trait with controller and http client
-- [ ] Command line interface
-- [ ] Special (direct) handling of single company Kelly allocation
-
-
 ## Investment process
 
 This software is rather simple, and it really serves two purposes, both of them related to capital allocation process:
