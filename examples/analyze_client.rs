@@ -1,8 +1,8 @@
 use log::info;
-use reqwest::StatusCode;
-use simple_logger::SimpleLogger;
 use portfolio::model::portfolio::Portfolio;
 use portfolio::model::responses::AnalysisResponse;
+use reqwest::StatusCode;
+use simple_logger::SimpleLogger;
 
 const ASSERTION_TOLERANCE: f64 = 1e-6;
 
@@ -86,7 +86,10 @@ fn main() {
     assert_eq!(response.status(), StatusCode::OK);
 
     let analysis_response = response.json::<AnalysisResponse>().unwrap();
-    info!("Post successful, analysis response is: {:?}", analysis_response);
+    info!(
+        "Post successful, analysis response is: {:?}",
+        analysis_response
+    );
 
     // Assert that the response is as expected
     info!("Asserting that we didn't hit run-time errors.");
@@ -109,8 +112,7 @@ fn main() {
     );
 
     assert!(
-        (analysis_result.cumulative_probability_of_loss - 0.4425).abs()
-            < ASSERTION_TOLERANCE,
+        (analysis_result.cumulative_probability_of_loss - 0.4425).abs() < ASSERTION_TOLERANCE,
         "Expected close to 0.4425, got {}",
         analysis_result.cumulative_probability_of_loss
     );

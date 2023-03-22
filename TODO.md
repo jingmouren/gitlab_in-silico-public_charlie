@@ -16,10 +16,11 @@ Minimum:
 - [x] Add warning if a company got filtered
 - [x] Add filtering for companies without downside
 - [x] Run a server and post two examples in the pipeline
-- [ ] Generate OpenAPI schema for input and output data models
+- [x] Generate OpenAPI schema for input and output data models
 - [ ] Logging with trace (try logging from rocket)
 
 Future improvements:
+- [ ] Add a test for monitoring schema changes
 - [ ] Update README.md
 - [ ] Improve test coverage
 - [ ] Create/find macro for assertion with tolerance

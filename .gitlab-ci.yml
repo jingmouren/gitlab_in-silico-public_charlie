@@ -43,7 +43,7 @@ server-test:
   script:
     # Run the server and sleep 10 seconds for it to start (TODO: Improve by adding health endpoint)
     - cargo build --release
-    - nohup cargo run --release &
+    - nohup cargo run --release --bin run_server &
     - sleep 10
     - cargo run --example allocate_client
     - cargo run --example analyze_client

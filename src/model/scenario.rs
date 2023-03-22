@@ -1,12 +1,13 @@
 use crate::validation::result::{Problem, Severity, ValidationResult};
 use crate::validation::validate::Validate;
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use std::hash::{Hash, Hasher};
 
 /// A scenario is represented by an investment thesis, which can be boiled down to the expected
 /// intrinsic value and the estimated probability that this scenario will play out in the future
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, JsonSchema, Clone, Debug)]
 pub struct Scenario {
     pub thesis: String,
     pub intrinsic_value: f64,

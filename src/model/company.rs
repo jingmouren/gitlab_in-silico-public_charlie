@@ -1,3 +1,4 @@
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use std::hash::{Hash, Hasher};
@@ -12,7 +13,7 @@ pub type Ticker = String;
 pub(crate) const TOLERANCE: f64 = 1e-10;
 
 /// A company with some basic information relevant for investment and a set of possible scenarios
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, JsonSchema, Clone, Debug)]
 pub struct Company {
     pub name: String,
     pub ticker: Ticker,

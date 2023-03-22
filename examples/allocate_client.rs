@@ -1,8 +1,8 @@
 use log::info;
-use reqwest::StatusCode;
-use simple_logger::SimpleLogger;
 use portfolio::model::portfolio::PortfolioCandidates;
 use portfolio::model::responses::AllocationResponse;
+use reqwest::StatusCode;
+use simple_logger::SimpleLogger;
 
 const ASSERTION_TOLERANCE: f64 = 1e-6;
 
@@ -79,7 +79,10 @@ fn main() {
 
     assert_eq!(response.status(), StatusCode::OK);
     let allocation_result = response.json::<AllocationResponse>().unwrap();
-    info!("Post successful, allocation response is: {:?}", allocation_result);
+    info!(
+        "Post successful, allocation response is: {:?}",
+        allocation_result
+    );
 
     // Assert that the response is as expected
     info!("Asserting that we didn't hit run-time errors or validation problems.");
@@ -129,8 +132,7 @@ fn main() {
     );
 
     assert!(
-        (analysis_result.cumulative_probability_of_loss - 0.38625).abs()
-            < ASSERTION_TOLERANCE,
+        (analysis_result.cumulative_probability_of_loss - 0.38625).abs() < ASSERTION_TOLERANCE,
         "Expected close to 0.38625, got {}",
         analysis_result.cumulative_probability_of_loss
     );
