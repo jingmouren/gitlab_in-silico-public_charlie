@@ -6,6 +6,7 @@ pub mod validation;
 use crate::allocation::{kelly_allocate, MAX_ITER};
 use crate::analysis::{all_outcomes, worst_case_outcome};
 use crate::analysis::{cumulative_probability_of_loss, expected_return};
+use dropshot::{endpoint, HttpError, HttpResponseOk, RequestContext, TypedBody};
 use crate::model::company::Company;
 use crate::model::errors::Error;
 use crate::model::portfolio::{Portfolio, PortfolioCandidates};
@@ -16,10 +17,8 @@ use crate::model::responses::{
 use crate::validation::result::Severity::ERROR;
 use crate::validation::result::ValidationResult;
 use crate::validation::validate::Validate;
-use log::info;
-use rocket::post;
-use rocket::serde::json::Json;
 use std::collections::HashSet;
+use log::info;
 
 /// Validate the candidates and return all problematic validations
 pub fn validate(portfolio_candidates: &PortfolioCandidates) -> Vec<ValidationResult> {
@@ -38,23 +37,27 @@ pub fn validate(portfolio_candidates: &PortfolioCandidates) -> Vec<ValidationRes
 }
 
 /// Calculates optimal allocation for each candidate company
-#[post(
-    "/allocate",
-    format = "application/json",
-    data = "<portfolio_candidates>"
-)]
-pub fn allocate(portfolio_candidates: PortfolioCandidates) -> Json<AllocationResponse> {
+#[endpoint {
+    method = POST,
+    path = "/allocate",
+    tags = [ "allocate" ],
+}]
+pub async fn allocate(
+    _rqctx: RequestContext<()>, // Not used but needed by dropshot's interface
+    body: TypedBody<PortfolioCandidates>,
+) -> Result<HttpResponseOk<AllocationResponse>, HttpError> {
     // Return immediately if there is at least one validation error
+    let portfolio_candidates: PortfolioCandidates = body.into_inner();
     let validation_problems: Vec<ValidationResult> = validate(&portfolio_candidates);
     if validation_problems.iter().any(|v| match v {
         ValidationResult::PROBLEM(p) => p.severity == ERROR,
         ValidationResult::OK => false,
     }) {
-        return Json(AllocationResponse {
+        return Ok(HttpResponseOk(AllocationResponse {
             result: None,
             validation_problems: Some(validation_problems),
             error: None,
-        });
+        }));
     }
 
     // Create a subset of all candidates that can be handled by the algorithm. We don't allow:
@@ -85,24 +88,24 @@ pub fn allocate(portfolio_candidates: PortfolioCandidates) -> Json<AllocationRes
 
     // Return if there are no companies after filtering
     if filtered_candidates.is_empty() {
-        return Json(AllocationResponse {
+        return Ok(HttpResponseOk(AllocationResponse {
             result: None,
             validation_problems: Some(validation_problems),
             error: Some(Error {
                 code: "no-valid-candidates-for-allocation".to_string(),
                 message: "Found no valid candidates for allocation. Check your input.".to_string(),
             }),
-        });
+        }));
     }
 
     let portfolio = match kelly_allocate(filtered_candidates, MAX_ITER) {
         Ok(p) => p,
         Err(e) => {
-            return Json(AllocationResponse {
+            return Ok(HttpResponseOk(AllocationResponse {
                 result: None,
                 validation_problems: Some(validation_problems),
                 error: Some(e),
-            })
+            }));
         }
     };
 
@@ -118,16 +121,16 @@ pub fn allocate(portfolio_candidates: PortfolioCandidates) -> Json<AllocationRes
     let all_outcomes = match all_outcomes(&portfolio) {
         Ok(o) => o,
         Err(e) => {
-            return Json(AllocationResponse {
+            return Ok(HttpResponseOk(AllocationResponse {
                 result: None,
                 validation_problems: None,
                 error: Some(e),
-            })
+            }));
         }
     };
     let worst_case = worst_case_outcome(&all_outcomes);
 
-    Json(AllocationResponse {
+    Ok(HttpResponseOk(AllocationResponse {
         result: Some(AllocationResult {
             allocations: allocation_result,
             analysis: AnalysisResult {
@@ -141,24 +144,33 @@ pub fn allocate(portfolio_candidates: PortfolioCandidates) -> Json<AllocationRes
         }),
         validation_problems: Some(validation_problems),
         error: None,
-    })
+    }))
 }
 
 /// Calculates and prints useful information about the portfolio
-#[post("/analyze", format = "application/json", data = "<portfolio>")]
-pub fn analyze(portfolio: Portfolio) -> Json<AnalysisResponse> {
+#[endpoint {
+    method = POST,
+    path = "/analyze",
+    tags = [ "analyze" ],
+}]
+pub async fn analyze(
+    _rqctx: RequestContext<()>, // Not used but needed by dropshot's interface
+    body: TypedBody<Portfolio>,
+) -> Result<HttpResponseOk<AnalysisResponse>, HttpError> {
+    let portfolio: Portfolio = body.into_inner();
+
     let all_outcomes = match all_outcomes(&portfolio) {
         Ok(o) => o,
         Err(e) => {
-            return Json(AnalysisResponse {
+            return Ok(HttpResponseOk(AnalysisResponse {
                 result: None,
                 error: Some(e),
-            })
+            }));
         }
     };
     let worst_case = worst_case_outcome(&all_outcomes);
 
-    Json(AnalysisResponse {
+    Ok(HttpResponseOk(AnalysisResponse {
         result: Some(AnalysisResult {
             worst_case_outcome: ProbabilityAndReturn {
                 probability: worst_case.probability,
@@ -168,5 +180,5 @@ pub fn analyze(portfolio: Portfolio) -> Json<AnalysisResponse> {
             expected_return: expected_return(&portfolio),
         }),
         error: None,
-    })
+    }))
 }

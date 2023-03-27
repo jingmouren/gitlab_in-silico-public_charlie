@@ -1,9 +1,13 @@
+use std::sync::Arc;
+use std::task::Context;
+use dropshot::{RequestContext, RequestInfo, TypedBody};
+use log::LevelFilter;
+use simple_logger::SimpleLogger;
 use portfolio::allocation::{kelly_allocate, MAX_ITER};
 use portfolio::model::portfolio::PortfolioCandidates;
-use portfolio::model::responses::{AllocationResponse, TickerAndFraction};
+use portfolio::model::responses::{AllocationResponse, AnalysisResponse, TickerAndFraction};
 use portfolio::validation::result::ValidationResult;
 use portfolio::{allocate, analyze, validate};
-use rocket::serde::json::Json;
 
 const ASSERTION_TOLERANCE: f64 = 1e-6;
 
@@ -113,6 +117,15 @@ const TEST_YAML: &str = "
                 probability: 0.7
         ";
 
+const MOCK_REQUEST_CONTEXT: RequestContext<()> = RequestContext {
+    server: Arc::new(DropshotState),
+    path_variables: Default::default(),
+    body_content_type: Default::default(),
+    request_id: "".to_string(),
+    log: Logger::new(),
+    request: RequestInfo::new()
+};
+
 #[test]
 fn test_create_candidates_and_validate() {
     let candidates: PortfolioCandidates = serde_yaml::from_str(&TEST_YAML.to_string()).unwrap();
@@ -207,8 +220,8 @@ fn test_allocate() {
     assert_eq!(validation_errors, vec![]);
 
     // Allocate
-    let portfolio: Json<AllocationResponse> = allocate(candidates);
-    let tickers_and_fractions: Vec<TickerAndFraction> = portfolio.0.result.unwrap().allocations;
+    let portfolio: TypedBody<AllocationResponse> = allocate(MOCK_REQUEST_CONTEXT, TypedBody(candidates));
+    let tickers_and_fractions: Vec<TickerAndFraction> = portfolio.into_inner().result.unwrap().allocations;
 
     // Print out the result for convenience
     println!("{:?}", tickers_and_fractions);
@@ -265,8 +278,8 @@ fn test_analyze() {
 
     // Allocate and analyze
     let portfolio = kelly_allocate(candidates.companies, MAX_ITER).unwrap();
-    let analysis_response = analyze(portfolio);
-    let analysis_result = analysis_response.0.result.unwrap();
+    let analysis_response: TypedBody<AnalysisResponse> = analyze(MOCK_REQUEST_CONTEXT, TypedBody(portfolio));
+    let analysis_result = analysis_response.into_inner().result.unwrap();
 
     // Print out the result for convenience
     println!("{:?}", analysis_result);
