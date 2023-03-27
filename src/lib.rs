@@ -6,7 +6,6 @@ pub mod validation;
 use crate::allocation::{kelly_allocate, MAX_ITER};
 use crate::analysis::{all_outcomes, worst_case_outcome};
 use crate::analysis::{cumulative_probability_of_loss, expected_return};
-use dropshot::{endpoint, HttpError, HttpResponseOk, RequestContext, TypedBody};
 use crate::model::company::Company;
 use crate::model::errors::Error;
 use crate::model::portfolio::{Portfolio, PortfolioCandidates};
@@ -17,8 +16,35 @@ use crate::model::responses::{
 use crate::validation::result::Severity::ERROR;
 use crate::validation::result::ValidationResult;
 use crate::validation::validate::Validate;
-use std::collections::HashSet;
+use dropshot::{endpoint, HttpError, HttpResponseOk, RequestContext, TypedBody};
 use log::info;
+use std::collections::HashSet;
+
+/// Endpoint for calculating optimal allocation given portfolio candidates
+#[endpoint {
+method = POST,
+path = "/allocate",
+tags = [ "allocate" ],
+}]
+pub async fn allocate_endpoint(
+    _rqctx: RequestContext<()>, // Not used but needed by dropshot's interface
+    body: TypedBody<PortfolioCandidates>,
+) -> Result<HttpResponseOk<AllocationResponse>, HttpError> {
+    allocate(body.into_inner())
+}
+
+/// Endpoint for analyzing the porftolio
+#[endpoint {
+    method = POST,
+    path = "/analyze",
+    tags = [ "analyze" ],
+}]
+pub async fn analyze_endpoint(
+    _rqctx: RequestContext<()>, // Not used but needed by dropshot's interface
+    body: TypedBody<Portfolio>,
+) -> Result<HttpResponseOk<AnalysisResponse>, HttpError> {
+    analyze(body.into_inner())
+}
 
 /// Validate the candidates and return all problematic validations
 pub fn validate(portfolio_candidates: &PortfolioCandidates) -> Vec<ValidationResult> {
@@ -37,17 +63,10 @@ pub fn validate(portfolio_candidates: &PortfolioCandidates) -> Vec<ValidationRes
 }
 
 /// Calculates optimal allocation for each candidate company
-#[endpoint {
-    method = POST,
-    path = "/allocate",
-    tags = [ "allocate" ],
-}]
-pub async fn allocate(
-    _rqctx: RequestContext<()>, // Not used but needed by dropshot's interface
-    body: TypedBody<PortfolioCandidates>,
+pub fn allocate(
+    portfolio_candidates: PortfolioCandidates,
 ) -> Result<HttpResponseOk<AllocationResponse>, HttpError> {
     // Return immediately if there is at least one validation error
-    let portfolio_candidates: PortfolioCandidates = body.into_inner();
     let validation_problems: Vec<ValidationResult> = validate(&portfolio_candidates);
     if validation_problems.iter().any(|v| match v {
         ValidationResult::PROBLEM(p) => p.severity == ERROR,
@@ -147,18 +166,8 @@ pub async fn allocate(
     }))
 }
 
-/// Calculates and prints useful information about the portfolio
-#[endpoint {
-    method = POST,
-    path = "/analyze",
-    tags = [ "analyze" ],
-}]
-pub async fn analyze(
-    _rqctx: RequestContext<()>, // Not used but needed by dropshot's interface
-    body: TypedBody<Portfolio>,
-) -> Result<HttpResponseOk<AnalysisResponse>, HttpError> {
-    let portfolio: Portfolio = body.into_inner();
-
+/// Calculates useful information about the porftolio
+pub fn analyze(portfolio: Portfolio) -> Result<HttpResponseOk<AnalysisResponse>, HttpError> {
     let all_outcomes = match all_outcomes(&portfolio) {
         Ok(o) => o,
         Err(e) => {
