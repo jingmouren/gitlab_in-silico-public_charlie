@@ -1,6 +1,9 @@
+use camino::Utf8PathBuf;
 use dropshot::{
-    ApiDescription, ConfigDropshot, ConfigLogging, ConfigLoggingLevel, HttpServerStarter,
+    ApiDescription, ConfigDropshot, ConfigLogging, ConfigLoggingIfExists, ConfigLoggingLevel,
+    HttpServerStarter,
 };
+use log::info;
 use portfolio::{allocate_endpoint, analyze_endpoint};
 use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
 
@@ -14,14 +17,17 @@ async fn main() -> Result<(), String> {
     };
 
     // An "info"-level logger that writes to stderr assuming that it's a terminal.
-    let config_logging = ConfigLogging::StderrTerminal {
+    let config_logging = ConfigLogging::File {
         level: ConfigLoggingLevel::Info,
+        path: Utf8PathBuf::from("./portfolio.log"),
+        if_exists: ConfigLoggingIfExists::Append,
     };
     let log = config_logging
         .to_logger("portfolio")
         .map_err(|error| format!("failed to create logger: {}", error))?;
 
     // Create an API description object and register the endpoints
+    info!("Registering API endpoints.");
     let mut api = ApiDescription::new();
     api.register(allocate_endpoint).unwrap();
     api.register(analyze_endpoint).unwrap();
@@ -32,11 +38,13 @@ async fn main() -> Result<(), String> {
     //     .map_err(|e| e.to_string())?;
 
     // Set up the server.
+    info!("Setting up the server.");
     let server = HttpServerStarter::new(&config_dropshot, api, (), &log)
         .map_err(|error| format!("failed to create server: {}", error))?
         .start();
 
     // Wait for the server to stop.  Note that there's not any code to shut down
     // this server, so we should never get past this point.
+    info!("Began serving.");
     server.await
 }

@@ -14,8 +14,10 @@ pub const MAX_ITER: u32 = 1000;
 /// Calculates allocation factors (fractions) for each company based on the Kelly criterion, by
 /// solving N nonlinear equations (N = number of candidates) using the Newton-Raphson algorithm
 pub fn kelly_allocate(candidates: Vec<Company>, max_iter: u32) -> Result<Portfolio, Error> {
-    // Initial guess for fractions assumes uniform allocation across all companies
     let n_companies: usize = candidates.len();
+    info!("Solving the Kelly allocation equations for {n_companies} companies");
+
+    // Initial guess for fractions assumes uniform allocation across all companies
     let uniform_fraction: f64 = 1.0 / n_companies as f64;
     let mut fractions: DVector<f64> = DVector::from_element(n_companies, uniform_fraction);
 
@@ -35,6 +37,7 @@ pub fn kelly_allocate(candidates: Vec<Company>, max_iter: u32) -> Result<Portfol
         Err(e) => return Err(e),
     };
 
+    info!("Starting Newton-Raphson loop.");
     let mut counter: u32 = 0;
     loop {
         // Update the fractions in the portfolio for calculating Kelly function and Jacobian
@@ -45,10 +48,12 @@ pub fn kelly_allocate(candidates: Vec<Company>, max_iter: u32) -> Result<Portfol
             .for_each(|(i, pc)| pc.fraction = fractions[i]);
 
         // Calculate the Jacobian with the latest fractions for all companies
+        info!("Calculating the Jacobian.");
         let jacobian: DMatrix<f64> = kelly_criterion_jacobian(&outcomes, &portfolio);
         let right_hand_side: DVector<f64> = -kelly_criterion(&outcomes, &portfolio);
 
         // Solve for delta_f and update the fractions in the portfolio
+        info!("Inverting the Jacobian.");
         let inverse_jacobian: DMatrix<f64> = match jacobian.try_inverse() {
             Some(s) => s,
             None => return Err(Error {
@@ -61,10 +66,12 @@ pub fn kelly_allocate(candidates: Vec<Company>, max_iter: u32) -> Result<Portfol
             }),
         };
 
+        info!("Calculating new fractions.");
         let delta_f: DVector<f64> = inverse_jacobian * &right_hand_side;
         fractions += &delta_f;
 
         // Convergence check (with Chebyshev/L-infinity norm)
+        info!("Performing convergence check...");
         if delta_f.abs().max() < FRACTION_TOLERANCE {
             info!("Newton-Raphson loop converged within {counter} iterations");
             break;
@@ -82,13 +89,16 @@ pub fn kelly_allocate(candidates: Vec<Company>, max_iter: u32) -> Result<Portfol
             });
         }
 
-        counter += 1
+        counter += 1;
+        info!("Finished {counter} iteration");
     }
 
     // Check whether we got a negative fraction, which implies shorting. This should not happen if
     // we filter out candidates with negative expected value (at least I think, I'm not 100% sure
     // since I didn't work on a mathematical proof: it's just my feeling)
+    info!("Checking for negative fractions.");
     if fractions.min() < 0.0 {
+        info!("Encountered a negative fraction, returning an error.");
         return Err(Error {
             code: "negative-fraction-after-solution".to_string(),
             message: format!(
@@ -96,6 +106,8 @@ pub fn kelly_allocate(candidates: Vec<Company>, max_iter: u32) -> Result<Portfol
             should not happen. Fractions are: {fractions}."
             ),
         });
+    } else {
+        info!("All fractions are non-negative.")
     }
 
     // Normalize the fractions such that their sum is equal to one. This essentially means that we
@@ -118,6 +130,7 @@ pub fn kelly_allocate(candidates: Vec<Company>, max_iter: u32) -> Result<Portfol
         .enumerate()
         .for_each(|(i, pc)| pc.fraction = fractions[i]);
 
+    info!("Optimal allocation based on Kelly criterion calculated. Returning.");
     Ok(portfolio)
 }
 

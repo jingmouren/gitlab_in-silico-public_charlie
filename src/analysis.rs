@@ -124,6 +124,7 @@ pub fn expected_return(portfolio: &Portfolio) -> f64 {
 
 /// Finds an outcome with maximum loss of capital and reports its probability
 pub fn worst_case_outcome(outcomes: &[Outcome]) -> &Outcome {
+    info!("Searching for worst case outcome.");
     let worst_case_outcome = outcomes
         .iter()
         .min_by_key(|o| OrderedFloat(o.weighted_return))

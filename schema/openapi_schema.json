@@ -1,0 +1,402 @@
+{
+  "components": {
+    "responses": {
+      "Error": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        },
+        "description": "Error"
+      }
+    },
+    "schemas": {
+      "AllocationResponse": {
+        "description": "Response of the call to the allocate endpoint, contains results of both allocation and analysis",
+        "properties": {
+          "error": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Error"
+              }
+            ],
+            "nullable": true
+          },
+          "result": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AllocationResult"
+              }
+            ],
+            "nullable": true
+          },
+          "validation_problems": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationResult"
+            },
+            "nullable": true,
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
+      "AllocationResult": {
+        "description": "Allocation result includes tickers and their fractions",
+        "properties": {
+          "allocations": {
+            "items": {
+              "$ref": "#/components/schemas/TickerAndFraction"
+            },
+            "type": "array"
+          },
+          "analysis": {
+            "$ref": "#/components/schemas/AnalysisResult"
+          }
+        },
+        "required": [
+          "allocations",
+          "analysis"
+        ],
+        "type": "object"
+      },
+      "AnalysisResponse": {
+        "description": "Response of the call to the analyze endpoint",
+        "properties": {
+          "error": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Error"
+              }
+            ],
+            "nullable": true
+          },
+          "result": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AnalysisResult"
+              }
+            ],
+            "nullable": true
+          }
+        },
+        "type": "object"
+      },
+      "AnalysisResult": {
+        "description": "Analysis result includes some statistics for a given portfolio",
+        "properties": {
+          "cumulative_probability_of_loss": {
+            "format": "double",
+            "type": "number"
+          },
+          "expected_return": {
+            "format": "double",
+            "type": "number"
+          },
+          "worst_case_outcome": {
+            "$ref": "#/components/schemas/ProbabilityAndReturn"
+          }
+        },
+        "required": [
+          "cumulative_probability_of_loss",
+          "expected_return",
+          "worst_case_outcome"
+        ],
+        "type": "object"
+      },
+      "Company": {
+        "description": "A company with some basic information relevant for investment and a set of possible scenarios",
+        "properties": {
+          "description": {
+            "type": "string"
+          },
+          "market_cap": {
+            "format": "double",
+            "type": "number"
+          },
+          "name": {
+            "type": "string"
+          },
+          "scenarios": {
+            "items": {
+              "$ref": "#/components/schemas/Scenario"
+            },
+            "type": "array"
+          },
+          "ticker": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "description",
+          "market_cap",
+          "name",
+          "scenarios",
+          "ticker"
+        ],
+        "type": "object"
+      },
+      "Error": {
+        "description": "Error with a message and a code. The code should be an internal identifier that indicates what happened, while the message should be user-facing message that is supposed to help the user",
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "message"
+        ],
+        "type": "object"
+      },
+      "Portfolio": {
+        "description": "Portfolio has a list of portfolio companies",
+        "properties": {
+          "companies": {
+            "items": {
+              "$ref": "#/components/schemas/PortfolioCompany"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "companies"
+        ],
+        "type": "object"
+      },
+      "PortfolioCandidates": {
+        "description": "Portfolio candidates has a list of companies",
+        "properties": {
+          "companies": {
+            "items": {
+              "$ref": "#/components/schemas/Company"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "companies"
+        ],
+        "type": "object"
+      },
+      "PortfolioCompany": {
+        "description": "Portfolio company represents a company with an associated allocation fraction",
+        "properties": {
+          "company": {
+            "$ref": "#/components/schemas/Company"
+          },
+          "fraction": {
+            "format": "double",
+            "type": "number"
+          }
+        },
+        "required": [
+          "company",
+          "fraction"
+        ],
+        "type": "object"
+      },
+      "ProbabilityAndReturn": {
+        "description": "Probability and return used to minimally represent an outcome",
+        "properties": {
+          "probability": {
+            "format": "double",
+            "type": "number"
+          },
+          "weighted_return": {
+            "format": "double",
+            "type": "number"
+          }
+        },
+        "required": [
+          "probability",
+          "weighted_return"
+        ],
+        "type": "object"
+      },
+      "Problem": {
+        "description": "Validation problem with some basic information",
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "severity": {
+            "$ref": "#/components/schemas/Severity"
+          }
+        },
+        "required": [
+          "code",
+          "message",
+          "severity"
+        ],
+        "type": "object"
+      },
+      "Scenario": {
+        "description": "A scenario is represented by an investment thesis, which can be boiled down to the expected intrinsic value and the estimated probability that this scenario will play out in the future",
+        "properties": {
+          "intrinsic_value": {
+            "format": "double",
+            "type": "number"
+          },
+          "probability": {
+            "format": "double",
+            "type": "number"
+          },
+          "thesis": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "intrinsic_value",
+          "probability",
+          "thesis"
+        ],
+        "type": "object"
+      },
+      "Severity": {
+        "description": "Validation severity",
+        "enum": [
+          "ERROR",
+          "WARNING"
+        ],
+        "type": "string"
+      },
+      "TickerAndFraction": {
+        "description": "A ticker and a fraction used for minimalistic representation of the allocation calculation",
+        "properties": {
+          "fraction": {
+            "format": "double",
+            "type": "number"
+          },
+          "ticker": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "fraction",
+          "ticker"
+        ],
+        "type": "object"
+      },
+      "ValidationResult": {
+        "description": "Validation result can either be a Problem or Ok",
+        "oneOf": [
+          {
+            "enum": [
+              "OK"
+            ],
+            "type": "string"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "PROBLEM": {
+                "$ref": "#/components/schemas/Problem"
+              }
+            },
+            "required": [
+              "PROBLEM"
+            ],
+            "type": "object"
+          }
+        ]
+      }
+    }
+  },
+  "info": {
+    "title": "Portfolio",
+    "version": "v1"
+  },
+  "openapi": "3.0.3",
+  "paths": {
+    "/allocate": {
+      "post": {
+        "operationId": "allocate_endpoint",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PortfolioCandidates"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AllocationResponse"
+                }
+              }
+            },
+            "description": "successful operation"
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "summary": "Endpoint for calculating optimal allocation given portfolio candidates",
+        "tags": [
+          "allocate"
+        ]
+      }
+    },
+    "/analyze": {
+      "post": {
+        "operationId": "analyze_endpoint",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Portfolio"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalysisResponse"
+                }
+              }
+            },
+            "description": "successful operation"
+          },
+          "4XX": {
+            "$ref": "#/components/responses/Error"
+          },
+          "5XX": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "summary": "Endpoint for analyzing the porftolio",
+        "tags": [
+          "analyze"
+        ]
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "allocate"
+    },
+    {
+      "name": "analyze"
+    }
+  ]
+}
