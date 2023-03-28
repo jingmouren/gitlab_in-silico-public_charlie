@@ -157,17 +157,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "colored"
-version = "2.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b3616f750b84d8f0de8a58bda93e08e2a81ad3f523089b05f1dffecab48c6cbd"
-dependencies = [
- "atty",
- "lazy_static",
- "winapi",
-]
-
-[[package]]
 name = "core-foundation"
 version = "0.9.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1086,7 +1075,6 @@ dependencies = [
  "camino",
  "dropshot",
  "itertools",
- "log",
  "nalgebra",
  "num-traits",
  "ordered-float",
@@ -1095,7 +1083,9 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_yaml",
- "simple_logger",
+ "slog",
+ "slog-async",
+ "slog-term",
  "tokio",
 ]
 
@@ -1439,19 +1429,6 @@ dependencies = [
  "num-traits",
  "paste",
  "wide",
-]
-
-[[package]]
-name = "simple_logger"
-version = "4.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e190a521c2044948158666916d9e872cbb9984f755e9bb3b5b75a836205affcd"
-dependencies = [
- "atty",
- "colored",
- "log",
- "time 0.3.20",
- "windows-sys 0.42.0",
 ]
 
 [[package]]

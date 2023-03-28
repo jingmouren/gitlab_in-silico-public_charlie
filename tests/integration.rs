@@ -1,8 +1,10 @@
 use portfolio::allocation::{kelly_allocate, MAX_ITER};
+use portfolio::env::create_logger;
 use portfolio::model::portfolio::PortfolioCandidates;
 use portfolio::model::responses::{AllocationResponse, AnalysisResponse, TickerAndFraction};
 use portfolio::validation::result::ValidationResult;
 use portfolio::{allocate, analyze, validate};
+use slog::info;
 
 const ASSERTION_TOLERANCE: f64 = 1e-6;
 
@@ -194,23 +196,25 @@ fn test_create_candidates_and_validate() {
     assert_eq!(candidates.companies[5].scenarios[2].probability, 0.7);
 
     // Assert that there are no validation issues
-    let validation_errors: Vec<ValidationResult> = validate(&candidates);
+    let logger = create_logger();
+    let validation_errors: Vec<ValidationResult> = validate(&candidates, &logger);
     assert_eq!(validation_errors, vec![]);
 }
 
 #[test]
 fn test_allocate() {
     // Create candidates and validate them
+    let logger = create_logger();
     let candidates: PortfolioCandidates = serde_yaml::from_str(&TEST_YAML.to_string()).unwrap();
-    let validation_errors: Vec<ValidationResult> = validate(&candidates);
+    let validation_errors: Vec<ValidationResult> = validate(&candidates, &logger);
     assert_eq!(validation_errors, vec![]);
 
     // Allocate
-    let portfolio: AllocationResponse = allocate(candidates).unwrap().0;
+    let portfolio: AllocationResponse = allocate(candidates, &logger).unwrap().0;
     let tickers_and_fractions: Vec<TickerAndFraction> = portfolio.result.unwrap().allocations;
 
     // Print out the result for convenience
-    println!("{:?}", tickers_and_fractions);
+    info!(logger, "{:?}", tickers_and_fractions);
 
     assert_eq!(tickers_and_fractions[0].ticker, "A".to_string());
     assert!(
@@ -258,17 +262,18 @@ fn test_allocate() {
 #[test]
 fn test_analyze() {
     // Create candidates and validate them
+    let logger = create_logger();
     let candidates: PortfolioCandidates = serde_yaml::from_str(&TEST_YAML.to_string()).unwrap();
-    let validation_errors: Vec<ValidationResult> = validate(&candidates);
+    let validation_errors: Vec<ValidationResult> = validate(&candidates, &logger);
     assert_eq!(validation_errors, vec![]);
 
     // Allocate and analyze
-    let portfolio = kelly_allocate(candidates.companies, MAX_ITER).unwrap();
-    let analysis_response: AnalysisResponse = analyze(portfolio).unwrap().0;
+    let portfolio = kelly_allocate(candidates.companies, MAX_ITER, &logger).unwrap();
+    let analysis_response: AnalysisResponse = analyze(portfolio, &logger).unwrap().0;
     let analysis_result = analysis_response.result.unwrap();
 
     // Print out the result for convenience
-    println!("{:?}", analysis_result);
+    info!(logger, "{:?}", analysis_result);
 
     assert!(
         (analysis_result.worst_case_outcome.probability - 3.125e-7).abs() < ASSERTION_TOLERANCE,

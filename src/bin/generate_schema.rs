@@ -1,12 +1,15 @@
 use dropshot::ApiDescription;
-use log::info;
+use portfolio::env::create_logger;
 use portfolio::{allocate_endpoint, analyze_endpoint};
-use simple_logger::SimpleLogger;
+use slog::info;
 use std::{env, fs};
 
 fn main() {
-    SimpleLogger::new().init().unwrap();
-    info!("Creating JSON schema for all input and output data structures...");
+    let logger = create_logger();
+    info!(
+        logger,
+        "Creating JSON schema for all input and output data structures..."
+    );
 
     let this_file_path = env::current_exe().expect("Can't get path of this file.");
     let project_root_dir = this_file_path
@@ -18,12 +21,12 @@ fn main() {
         .expect("Can't get third parent of this file");
     let schema_file = project_root_dir.join("schema").join("openapi_schema.json");
 
-    info!("Registering API endpoints.");
+    info!(logger, "Registering API endpoints.");
     let mut api = ApiDescription::new();
     api.register(allocate_endpoint).unwrap();
     api.register(analyze_endpoint).unwrap();
 
-    info!("Will OpenAPI schema to {:?}", schema_file);
+    info!(logger, "Will OpenAPI schema to {:?}", schema_file);
     fs::write(
         schema_file,
         serde_json::to_string_pretty(
@@ -35,5 +38,5 @@ fn main() {
     )
     .expect("Failed to write the schema.");
 
-    info!("Done.");
+    info!(logger, "Done.");
 }

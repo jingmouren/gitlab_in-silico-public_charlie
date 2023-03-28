@@ -1,5 +1,6 @@
 pub mod allocation;
 pub mod analysis;
+pub mod env;
 pub mod model;
 pub mod validation;
 
@@ -17,20 +18,20 @@ use crate::validation::result::Severity::ERROR;
 use crate::validation::result::ValidationResult;
 use crate::validation::validate::Validate;
 use dropshot::{endpoint, HttpError, HttpResponseOk, RequestContext, TypedBody};
-use log::info;
+use slog::{info, Logger};
 use std::collections::HashSet;
 
 /// Endpoint for calculating optimal allocation given portfolio candidates
 #[endpoint {
-method = POST,
-path = "/allocate",
-tags = [ "allocate" ],
+    method = POST,
+    path = "/allocate",
+    tags = [ "allocate" ],
 }]
 pub async fn allocate_endpoint(
-    _rqctx: RequestContext<()>, // Not used but needed by dropshot's interface
+    rqctx: RequestContext<()>,
     body: TypedBody<PortfolioCandidates>,
 ) -> Result<HttpResponseOk<AllocationResponse>, HttpError> {
-    allocate(body.into_inner())
+    allocate(body.into_inner(), &rqctx.log)
 }
 
 /// Endpoint for analyzing the porftolio
@@ -40,15 +41,18 @@ pub async fn allocate_endpoint(
     tags = [ "analyze" ],
 }]
 pub async fn analyze_endpoint(
-    _rqctx: RequestContext<()>, // Not used but needed by dropshot's interface
+    rqctx: RequestContext<()>,
     body: TypedBody<Portfolio>,
 ) -> Result<HttpResponseOk<AnalysisResponse>, HttpError> {
-    analyze(body.into_inner())
+    analyze(body.into_inner(), &rqctx.log)
 }
 
 /// Validate the candidates and return all problematic validations
-pub fn validate(portfolio_candidates: &PortfolioCandidates) -> Vec<ValidationResult> {
-    info!("Performing validation of portfolio candidates.");
+pub fn validate(
+    portfolio_candidates: &PortfolioCandidates,
+    logger: &Logger,
+) -> Vec<ValidationResult> {
+    info!(logger, "Performing validation of portfolio candidates.");
     let mut all_validation_results: HashSet<ValidationResult> = HashSet::new();
 
     portfolio_candidates
@@ -62,7 +66,11 @@ pub fn validate(portfolio_candidates: &PortfolioCandidates) -> Vec<ValidationRes
         .filter(|vr| vr != &ValidationResult::OK)
         .collect();
 
-    info!("Found {} validation problems.", validation_problems.len());
+    info!(
+        logger,
+        "Found {} validation problems.",
+        validation_problems.len()
+    );
 
     validation_problems
 }
@@ -70,16 +78,17 @@ pub fn validate(portfolio_candidates: &PortfolioCandidates) -> Vec<ValidationRes
 /// Calculates optimal allocation for each candidate company
 pub fn allocate(
     portfolio_candidates: PortfolioCandidates,
+    logger: &Logger,
 ) -> Result<HttpResponseOk<AllocationResponse>, HttpError> {
-    info!("Started allocation.");
+    info!(logger, "Started allocation.");
 
     // Return immediately if there is at least one validation error
-    let validation_problems: Vec<ValidationResult> = validate(&portfolio_candidates);
+    let validation_problems: Vec<ValidationResult> = validate(&portfolio_candidates, logger);
     if validation_problems.iter().any(|v| match v {
         ValidationResult::PROBLEM(p) => p.severity == ERROR,
         ValidationResult::OK => false,
     }) {
-        info!("Validation problems found, returning them.");
+        info!(logger, "Validation problems found, returning them.");
         return Ok(HttpResponseOk(AllocationResponse {
             result: None,
             validation_problems: Some(validation_problems),
@@ -91,18 +100,21 @@ pub fn allocate(
     // 1. Candidates that have a negative expected return (would result in shorting),
     // 2. Candidates that don't have any downside (would result in numerical failure because the
     //    mathematical solution is to put an infinite amount of levered money into it)
-    info!("Start filtering candidates that would produce undesirable results.");
+    info!(
+        logger,
+        "Start filtering candidates that would produce undesirable results."
+    );
     let mut filtered_candidates: Vec<Company> = vec![];
     portfolio_candidates.companies.into_iter().for_each(|c| {
         let downside_validation = c.validate_no_downside_scenario();
         match &downside_validation {
-            ValidationResult::PROBLEM(problem) => info!("{}", problem.message),
+            ValidationResult::PROBLEM(problem) => info!(logger, "{}", problem.message),
             ValidationResult::OK => (),
         }
 
         let negative_expected_return_validation = c.validate_negative_expected_return();
         match &negative_expected_return_validation {
-            ValidationResult::PROBLEM(problem) => info!("{}", problem.message),
+            ValidationResult::PROBLEM(problem) => info!(logger, "{}", problem.message),
             ValidationResult::OK => (),
         }
 
@@ -112,13 +124,16 @@ pub fn allocate(
         {
             filtered_candidates.push(c)
         } else {
-            info!("Filtered out candidate {} because it either has a negative expected return or it doesn't have any downside.", c.ticker)
+            info!(logger, "Filtered out candidate {} because it either has a negative expected return or it doesn't have any downside.", c.ticker)
         }
     });
 
     // Return if there are no companies after filtering
     if filtered_candidates.is_empty() {
-        info!("No valid candidates found after filtering, returning an error.");
+        info!(
+            logger,
+            "No valid candidates found after filtering, returning an error."
+        );
         return Ok(HttpResponseOk(AllocationResponse {
             result: None,
             validation_problems: Some(validation_problems),
@@ -130,10 +145,11 @@ pub fn allocate(
     }
 
     info!(
+        logger,
         "Calculating the optimal allocation for {} candidates.",
         filtered_candidates.len()
     );
-    let portfolio = match kelly_allocate(filtered_candidates, MAX_ITER) {
+    let portfolio = match kelly_allocate(filtered_candidates, MAX_ITER, logger) {
         Ok(p) => p,
         Err(e) => {
             return Ok(HttpResponseOk(AllocationResponse {
@@ -144,7 +160,7 @@ pub fn allocate(
         }
     };
 
-    info!("Allocation complete, collecting allocation result.");
+    info!(logger, "Allocation complete, collecting allocation result.");
     let allocation_result: Vec<TickerAndFraction> = portfolio
         .companies
         .iter()
@@ -154,11 +170,17 @@ pub fn allocate(
         })
         .collect();
 
-    info!("Getting all outcomes in order to calculate some statistics about the portfolio.");
+    info!(
+        logger,
+        "Getting all outcomes in order to calculate some statistics about the portfolio."
+    );
     let all_outcomes = match all_outcomes(&portfolio) {
         Ok(o) => o,
         Err(e) => {
-            info!("Encountered an error while getting all outcomes. Returning it.");
+            info!(
+                logger,
+                "Encountered an error while getting all outcomes. Returning it."
+            );
             return Ok(HttpResponseOk(AllocationResponse {
                 result: None,
                 validation_problems: None,
@@ -166,9 +188,12 @@ pub fn allocate(
             }));
         }
     };
-    let worst_case = worst_case_outcome(&all_outcomes);
+    let worst_case = worst_case_outcome(&all_outcomes, logger);
 
-    info!("Allocation and analysis finished. Returning the allocation and analysis results.");
+    info!(
+        logger,
+        "Allocation and analysis finished. Returning the allocation and analysis results."
+    );
     Ok(HttpResponseOk(AllocationResponse {
         result: Some(AllocationResult {
             allocations: allocation_result,
@@ -177,8 +202,11 @@ pub fn allocate(
                     probability: worst_case.probability,
                     weighted_return: worst_case.weighted_return,
                 },
-                cumulative_probability_of_loss: cumulative_probability_of_loss(&all_outcomes),
-                expected_return: expected_return(&portfolio),
+                cumulative_probability_of_loss: cumulative_probability_of_loss(
+                    &all_outcomes,
+                    logger,
+                ),
+                expected_return: expected_return(&portfolio, logger),
             },
         }),
         validation_problems: Some(validation_problems),
@@ -187,29 +215,38 @@ pub fn allocate(
 }
 
 /// Calculates useful information about the porftolio
-pub fn analyze(portfolio: Portfolio) -> Result<HttpResponseOk<AnalysisResponse>, HttpError> {
-    info!("Started portfolio analysis by getting all outcomes.");
+pub fn analyze(
+    portfolio: Portfolio,
+    logger: &Logger,
+) -> Result<HttpResponseOk<AnalysisResponse>, HttpError> {
+    info!(
+        logger,
+        "Started portfolio analysis by getting all outcomes."
+    );
     let all_outcomes = match all_outcomes(&portfolio) {
         Ok(o) => o,
         Err(e) => {
-            info!("Encountered an error while getting all outcomes. Returning it.");
+            info!(
+                logger,
+                "Encountered an error while getting all outcomes. Returning it."
+            );
             return Ok(HttpResponseOk(AnalysisResponse {
                 result: None,
                 error: Some(e),
             }));
         }
     };
-    let worst_case = worst_case_outcome(&all_outcomes);
+    let worst_case = worst_case_outcome(&all_outcomes, logger);
 
-    info!("Analysis complete, returning.");
+    info!(logger, "Analysis complete, returning.");
     Ok(HttpResponseOk(AnalysisResponse {
         result: Some(AnalysisResult {
             worst_case_outcome: ProbabilityAndReturn {
                 probability: worst_case.probability,
                 weighted_return: worst_case.weighted_return,
             },
-            cumulative_probability_of_loss: cumulative_probability_of_loss(&all_outcomes),
-            expected_return: expected_return(&portfolio),
+            cumulative_probability_of_loss: cumulative_probability_of_loss(&all_outcomes, logger),
+            expected_return: expected_return(&portfolio, logger),
         }),
         error: None,
     }))

@@ -1,8 +1,8 @@
-use log::info;
+use portfolio::env::create_logger;
 use portfolio::model::portfolio::Portfolio;
 use portfolio::model::responses::AnalysisResponse;
 use reqwest::StatusCode;
-use simple_logger::SimpleLogger;
+use slog::info;
 
 const ASSERTION_TOLERANCE: f64 = 1e-6;
 
@@ -70,10 +70,10 @@ const TEST_YAML: &str = "
 
 /// Calls the analyze endpoint on the localhost:8000 and asserts the results
 fn main() {
-    SimpleLogger::new().init().unwrap();
+    let logger = create_logger();
 
     // Create analysis input and post
-    info!("Preparing to post portfolio to analyze endpoint.");
+    info!(logger, "Preparing to post portfolio to analyze endpoint.");
     let portfolio: Portfolio = serde_yaml::from_str(&TEST_YAML.to_string()).unwrap();
 
     let client = reqwest::blocking::Client::new();
@@ -87,16 +87,16 @@ fn main() {
 
     let analysis_response = response.json::<AnalysisResponse>().unwrap();
     info!(
-        "Post successful, analysis response is: {:?}",
-        analysis_response
+        logger,
+        "Post successful, analysis response is: {:?}", analysis_response
     );
 
     // Assert that the response is as expected
-    info!("Asserting that we didn't hit run-time errors.");
+    info!(logger, "Asserting that we didn't hit run-time errors.");
     assert_eq!(analysis_response.error, None);
 
     // Assert analysis results
-    info!("Asserting analysis results.");
+    info!(logger, "Asserting analysis results.");
     let analysis_result = analysis_response.result.unwrap();
 
     assert!(
@@ -123,5 +123,5 @@ fn main() {
         analysis_result.expected_return
     );
 
-    info!("Done.");
+    info!(logger, "Done.");
 }

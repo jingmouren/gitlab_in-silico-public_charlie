@@ -3,8 +3,8 @@ use dropshot::{
     ApiDescription, ConfigDropshot, ConfigLogging, ConfigLoggingIfExists, ConfigLoggingLevel,
     HttpServerStarter,
 };
-use log::info;
 use portfolio::{allocate_endpoint, analyze_endpoint};
+use slog::info;
 use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
 
 #[tokio::main]
@@ -27,24 +27,19 @@ async fn main() -> Result<(), String> {
         .map_err(|error| format!("failed to create logger: {}", error))?;
 
     // Create an API description object and register the endpoints
-    info!("Registering API endpoints.");
+    info!(log, "Registering API endpoints.");
     let mut api = ApiDescription::new();
     api.register(allocate_endpoint).unwrap();
     api.register(analyze_endpoint).unwrap();
 
-    // Write the OpenAPI schema
-    // api.openapi("Portfolio", "v1")
-    //     .write(&mut std::io::stdout())
-    //     .map_err(|e| e.to_string())?;
-
     // Set up the server.
-    info!("Setting up the server.");
+    info!(log, "Setting up the server.");
     let server = HttpServerStarter::new(&config_dropshot, api, (), &log)
         .map_err(|error| format!("failed to create server: {}", error))?
         .start();
 
     // Wait for the server to stop.  Note that there's not any code to shut down
     // this server, so we should never get past this point.
-    info!("Began serving.");
+    info!(log, "Began serving.");
     server.await
 }

@@ -1,8 +1,8 @@
-use log::info;
+use portfolio::env::create_logger;
 use portfolio::model::portfolio::PortfolioCandidates;
 use portfolio::model::responses::AllocationResponse;
 use reqwest::StatusCode;
-use simple_logger::SimpleLogger;
+use slog::info;
 
 const ASSERTION_TOLERANCE: f64 = 1e-6;
 
@@ -64,10 +64,10 @@ const TEST_YAML: &str = "
 
 /// Calls allocate endpoint on the localhost:8000 and asserts the results
 fn main() {
-    SimpleLogger::new().init().unwrap();
+    let logger = create_logger();
 
     // Create candidates and post
-    info!("Preparing to post candidates to allocate endpoint.");
+    info!(logger, "Preparing to post candidates to allocate endpoint.");
     let candidates: PortfolioCandidates = serde_yaml::from_str(&TEST_YAML.to_string()).unwrap();
 
     let client = reqwest::blocking::Client::new();
@@ -80,17 +80,20 @@ fn main() {
     assert_eq!(response.status(), StatusCode::OK);
     let allocation_result = response.json::<AllocationResponse>().unwrap();
     info!(
-        "Post successful, allocation response is: {:?}",
-        allocation_result
+        logger,
+        "Post successful, allocation response is: {:?}", allocation_result
     );
 
     // Assert that the response is as expected
-    info!("Asserting that we didn't hit run-time errors or validation problems.");
+    info!(
+        logger,
+        "Asserting that we didn't hit run-time errors or validation problems."
+    );
     assert_eq!(allocation_result.error, None);
     assert_eq!(allocation_result.validation_problems, Some(vec![]));
 
     // Assert allocation results
-    info!("Asserting allocation results.");
+    info!(logger, "Asserting allocation results.");
     let result = allocation_result.result.unwrap();
     let tickers_and_fractions = result.allocations;
 
@@ -116,7 +119,7 @@ fn main() {
     );
 
     // Assert analysis result
-    info!("Asserting analysis results.");
+    info!(logger, "Asserting analysis results.");
     let analysis_result = result.analysis;
 
     assert!(
@@ -143,5 +146,5 @@ fn main() {
         analysis_result.expected_return
     );
 
-    info!("Done.");
+    info!(logger, "Done.");
 }

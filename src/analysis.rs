@@ -1,8 +1,8 @@
 use crate::model::company::Ticker;
 use crate::model::errors::Error;
 use crate::model::portfolio::Portfolio;
-use log::info;
 use ordered_float::OrderedFloat;
+use slog::{info, Logger};
 use std::collections::HashMap;
 
 /// An outcome consists of its probability and portfolio return
@@ -98,7 +98,7 @@ pub fn all_outcomes(portfolio: &Portfolio) -> Result<Vec<Outcome>, Error> {
 }
 
 /// Calculates expected return of a portfolio
-pub fn expected_return(portfolio: &Portfolio) -> f64 {
+pub fn expected_return(portfolio: &Portfolio, logger: &Logger) -> f64 {
     let expected_return: f64 = portfolio
         .companies
         .iter()
@@ -115,6 +115,7 @@ pub fn expected_return(portfolio: &Portfolio) -> f64 {
         .sum();
 
     info!(
+        logger,
         "For every 1 dollar invested, we expect to end up with {:.2} dollars",
         1.0 + expected_return
     );
@@ -123,8 +124,8 @@ pub fn expected_return(portfolio: &Portfolio) -> f64 {
 }
 
 /// Finds an outcome with maximum loss of capital and reports its probability
-pub fn worst_case_outcome(outcomes: &[Outcome]) -> &Outcome {
-    info!("Searching for worst case outcome.");
+pub fn worst_case_outcome<'a>(outcomes: &'a [Outcome], logger: &Logger) -> &'a Outcome {
+    info!(logger, "Searching for worst case outcome.");
     let worst_case_outcome = outcomes
         .iter()
         .min_by_key(|o| OrderedFloat(o.weighted_return))
@@ -136,6 +137,7 @@ pub fn worst_case_outcome(outcomes: &[Outcome]) -> &Outcome {
         });
 
     info!(
+        logger,
         "Worst case outcome implies permanent loss of {:.1}% of invested assets with probability {:.6}%",
         100.0 * worst_case_outcome.weighted_return,
         100.0 * worst_case_outcome.probability
@@ -145,7 +147,7 @@ pub fn worst_case_outcome(outcomes: &[Outcome]) -> &Outcome {
 }
 
 /// Calculates the cumulative probability of losing money
-pub fn cumulative_probability_of_loss(outcomes: &[Outcome]) -> f64 {
+pub fn cumulative_probability_of_loss(outcomes: &[Outcome], logger: &Logger) -> f64 {
     let cumulative_probability_of_loss = outcomes
         .iter()
         .filter(|o| o.weighted_return < 0.0)
@@ -153,6 +155,7 @@ pub fn cumulative_probability_of_loss(outcomes: &[Outcome]) -> f64 {
         .sum();
 
     info!(
+        logger,
         "Cumulative probability of loss of capital is {:.3}%",
         100.0 * cumulative_probability_of_loss
     );
@@ -163,6 +166,7 @@ pub fn cumulative_probability_of_loss(outcomes: &[Outcome]) -> f64 {
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::env::create_logger;
     use crate::model::company;
     use crate::model::company::Company;
     use crate::model::portfolio::{Portfolio, PortfolioCompany};
@@ -285,7 +289,8 @@ mod test {
             }],
         };
 
-        assert!(expected_return(&test_portfolio) < company::TOLERANCE);
+        let logger = create_logger();
+        assert!(expected_return(&test_portfolio, &logger) < company::TOLERANCE);
     }
 
     #[test]
@@ -314,14 +319,16 @@ mod test {
             }],
         };
 
-        assert!((expected_return(&test_portfolio) - 0.6).abs() < company::TOLERANCE);
+        let logger = create_logger();
+        assert!((expected_return(&test_portfolio, &logger) - 0.6).abs() < company::TOLERANCE);
     }
 
     #[test]
     fn test_expected_value_three_assets() {
         let test_portfolio = get_test_portfolio_with_three_assets();
 
-        assert!((expected_return(&test_portfolio) - 0.285).abs() < company::TOLERANCE);
+        let logger = create_logger();
+        assert!((expected_return(&test_portfolio, &logger) - 0.285).abs() < company::TOLERANCE);
     }
 
     #[test]
@@ -491,9 +498,11 @@ mod test {
 
     #[test]
     fn test_worst_case_scenario() {
+        let logger = create_logger();
+
         let test_portfolio = get_test_portfolio_with_three_assets();
         let all_outcomes = all_outcomes(&test_portfolio).unwrap();
-        let worst_case = worst_case_outcome(&all_outcomes);
+        let worst_case = worst_case_outcome(&all_outcomes, &logger);
 
         assert_eq!(
             *worst_case,
@@ -511,9 +520,11 @@ mod test {
 
     #[test]
     fn test_cumulative_probability_of_loss() {
+        let logger = create_logger();
+
         let test_portfolio = get_test_portfolio_with_three_assets();
         let all_outcomes = all_outcomes(&test_portfolio).unwrap();
-        let cumulative_probability_of_loss = cumulative_probability_of_loss(&all_outcomes);
+        let cumulative_probability_of_loss = cumulative_probability_of_loss(&all_outcomes, &logger);
 
         assert!((cumulative_probability_of_loss - 0.22).abs() < company::TOLERANCE);
     }
