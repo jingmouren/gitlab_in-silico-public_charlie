@@ -20,9 +20,9 @@ Minimum:
 - [x] Move from rocket to dropshot
 - [x] Generate OpenAPI schema in dropshot
 - [x] Set-up logging
-- [ ] Figure out how to serve Swagger schema
 
 Future improvements:
+- [ ] Figure out how to serve Swagger schema
 - [ ] Add a test for monitoring schema changes
 - [ ] Update README.md
 - [ ] Improve test coverage

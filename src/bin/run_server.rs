@@ -3,7 +3,7 @@ use dropshot::{
     ApiDescription, ConfigDropshot, ConfigLogging, ConfigLoggingIfExists, ConfigLoggingLevel,
     HttpServerStarter,
 };
-use portfolio::{allocate_endpoint, analyze_endpoint};
+use portfolio::{allocate_endpoint, analyze_endpoint, openapi};
 use slog::info;
 use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
 
@@ -29,6 +29,7 @@ async fn main() -> Result<(), String> {
     // Create an API description object and register the endpoints
     info!(log, "Registering API endpoints.");
     let mut api = ApiDescription::new();
+    api.register(openapi).unwrap();
     api.register(allocate_endpoint).unwrap();
     api.register(analyze_endpoint).unwrap();
 

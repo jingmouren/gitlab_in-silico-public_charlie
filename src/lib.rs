@@ -7,6 +7,7 @@ pub mod validation;
 use crate::allocation::{kelly_allocate, MAX_ITER};
 use crate::analysis::{all_outcomes, worst_case_outcome};
 use crate::analysis::{cumulative_probability_of_loss, expected_return};
+use crate::env::get_schema_file_path;
 use crate::model::company::Company;
 use crate::model::errors::Error;
 use crate::model::portfolio::{Portfolio, PortfolioCandidates};
@@ -18,8 +19,29 @@ use crate::validation::result::Severity::ERROR;
 use crate::validation::result::ValidationResult;
 use crate::validation::validate::Validate;
 use dropshot::{endpoint, HttpError, HttpResponseOk, RequestContext, TypedBody};
+use serde_json::Value;
 use slog::{info, Logger};
 use std::collections::HashSet;
+use std::fs;
+
+/// Endpoint for getting the OpenAPI definition. Read it from the project directory
+#[endpoint {
+    method = GET,
+    path = "/api",
+    tags = [ "api" ],
+}]
+pub async fn openapi(_rqctx: RequestContext<()>) -> Result<HttpResponseOk<Value>, HttpError> {
+    let schema_file_path = get_schema_file_path();
+    let schema_file = fs::File::open(schema_file_path.clone()).unwrap_or_else(|_| {
+        panic!(
+            "Did not manage to open schema file at: {:?}",
+            schema_file_path
+        )
+    });
+    Ok(HttpResponseOk(
+        serde_json::from_reader(schema_file).expect("Did not manage to deserialize schema."),
+    ))
+}
 
 /// Endpoint for calculating optimal allocation given portfolio candidates
 #[endpoint {
