@@ -17,9 +17,12 @@ Minimum:
 - [x] Add filtering for companies without downside
 - [x] Run a server and post two examples in the pipeline
 - [x] Generate OpenAPI schema for input and output data models
-- [ ] Logging with trace (try logging from rocket)
+- [x] Move from rocket to dropshot
+- [x] Generate OpenAPI schema in dropshot
+- [x] Set-up logging
 
 Future improvements:
+- [ ] Figure out how to serve Swagger schema
 - [ ] Add a test for monitoring schema changes
 - [ ] Update README.md
 - [ ] Improve test coverage
@@ -27,6 +30,7 @@ Future improvements:
 - [ ] API trait with controller and http client
 - [ ] Command line interface
 - [ ] Special (direct) handling of single company Kelly allocation
+- [ ] Figure out how to do dependency injection for the Logger object that's passed around
 
 Future features:
 - [ ] Constraint for maximum allowable risk of permanent loss of capital

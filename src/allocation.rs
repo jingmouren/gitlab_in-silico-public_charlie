@@ -2,9 +2,9 @@ use crate::analysis::{all_outcomes, Outcome};
 use crate::model::company::Company;
 use crate::model::errors::Error;
 use crate::model::portfolio::{Portfolio, PortfolioCompany};
-use log::info;
 use nalgebra::{DMatrix, DVector};
 use num_traits::pow::Pow;
+use slog::{info, Logger};
 
 /// Tolerance for converging the fraction during Newton-Raphson iteration. Corresponds to 1%, which
 /// is more than enough given that the real uncertainty lies in the input data and not here.
@@ -13,9 +13,18 @@ pub const MAX_ITER: u32 = 1000;
 
 /// Calculates allocation factors (fractions) for each company based on the Kelly criterion, by
 /// solving N nonlinear equations (N = number of candidates) using the Newton-Raphson algorithm
-pub fn kelly_allocate(candidates: Vec<Company>, max_iter: u32) -> Result<Portfolio, Error> {
-    // Initial guess for fractions assumes uniform allocation across all companies
+pub fn kelly_allocate(
+    candidates: Vec<Company>,
+    max_iter: u32,
+    logger: &Logger,
+) -> Result<Portfolio, Error> {
     let n_companies: usize = candidates.len();
+    info!(
+        logger,
+        "Solving the Kelly allocation equations for {n_companies} companies"
+    );
+
+    // Initial guess for fractions assumes uniform allocation across all companies
     let uniform_fraction: f64 = 1.0 / n_companies as f64;
     let mut fractions: DVector<f64> = DVector::from_element(n_companies, uniform_fraction);
 
@@ -35,6 +44,7 @@ pub fn kelly_allocate(candidates: Vec<Company>, max_iter: u32) -> Result<Portfol
         Err(e) => return Err(e),
     };
 
+    info!(logger, "Starting Newton-Raphson loop.");
     let mut counter: u32 = 0;
     loop {
         // Update the fractions in the portfolio for calculating Kelly function and Jacobian
@@ -45,10 +55,12 @@ pub fn kelly_allocate(candidates: Vec<Company>, max_iter: u32) -> Result<Portfol
             .for_each(|(i, pc)| pc.fraction = fractions[i]);
 
         // Calculate the Jacobian with the latest fractions for all companies
+        info!(logger, "Calculating the Jacobian.");
         let jacobian: DMatrix<f64> = kelly_criterion_jacobian(&outcomes, &portfolio);
         let right_hand_side: DVector<f64> = -kelly_criterion(&outcomes, &portfolio);
 
         // Solve for delta_f and update the fractions in the portfolio
+        info!(logger, "Inverting the Jacobian.");
         let inverse_jacobian: DMatrix<f64> = match jacobian.try_inverse() {
             Some(s) => s,
             None => return Err(Error {
@@ -61,12 +73,17 @@ pub fn kelly_allocate(candidates: Vec<Company>, max_iter: u32) -> Result<Portfol
             }),
         };
 
+        info!(logger, "Calculating new fractions.");
         let delta_f: DVector<f64> = inverse_jacobian * &right_hand_side;
         fractions += &delta_f;
 
         // Convergence check (with Chebyshev/L-infinity norm)
+        info!(logger, "Performing convergence check...");
         if delta_f.abs().max() < FRACTION_TOLERANCE {
-            info!("Newton-Raphson loop converged within {counter} iterations");
+            info!(
+                logger,
+                "Newton-Raphson loop converged within {counter} iterations"
+            );
             break;
         }
 
@@ -82,13 +99,19 @@ pub fn kelly_allocate(candidates: Vec<Company>, max_iter: u32) -> Result<Portfol
             });
         }
 
-        counter += 1
+        counter += 1;
+        info!(logger, "Finished {counter} iteration");
     }
 
     // Check whether we got a negative fraction, which implies shorting. This should not happen if
     // we filter out candidates with negative expected value (at least I think, I'm not 100% sure
     // since I didn't work on a mathematical proof: it's just my feeling)
+    info!(logger, "Checking for negative fractions.");
     if fractions.min() < 0.0 {
+        info!(
+            logger,
+            "Encountered a negative fraction, returning an error."
+        );
         return Err(Error {
             code: "negative-fraction-after-solution".to_string(),
             message: format!(
@@ -96,6 +119,8 @@ pub fn kelly_allocate(candidates: Vec<Company>, max_iter: u32) -> Result<Portfol
             should not happen. Fractions are: {fractions}."
             ),
         });
+    } else {
+        info!(logger, "All fractions are non-negative.")
     }
 
     // Normalize the fractions such that their sum is equal to one. This essentially means that we
@@ -105,6 +130,7 @@ pub fn kelly_allocate(candidates: Vec<Company>, max_iter: u32) -> Result<Portfol
     let sum_fractions = fractions.sum();
     if sum_fractions > 1.0 {
         info!(
+            logger,
             "Sum of the fractions after the solution is {sum_fractions}, which is greater than \
             one. This implies use of leverage. Normalizing the fractions to avoid leverage."
         );
@@ -118,6 +144,10 @@ pub fn kelly_allocate(candidates: Vec<Company>, max_iter: u32) -> Result<Portfol
         .enumerate()
         .for_each(|(i, pc)| pc.fraction = fractions[i]);
 
+    info!(
+        logger,
+        "Optimal allocation based on Kelly criterion calculated. Returning."
+    );
     Ok(portfolio)
 }
 
@@ -185,6 +215,7 @@ fn kelly_criterion_jacobian(outcomes: &[Outcome], portfolio: &Portfolio) -> DMat
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::env::create_logger;
     use crate::model::company::Company;
     use crate::model::scenario::Scenario;
     use std::collections::HashMap;
@@ -329,8 +360,9 @@ mod test {
 
     #[test]
     fn test_allocate() {
+        let logger = create_logger();
         let test_candidates: Vec<Company> = generate_test_candidates();
-        let portfolio: Portfolio = kelly_allocate(test_candidates, MAX_ITER).unwrap();
+        let portfolio: Portfolio = kelly_allocate(test_candidates, MAX_ITER, &logger).unwrap();
 
         assert_eq!(portfolio.companies.len(), 2);
         assert!(
@@ -367,7 +399,8 @@ mod test {
             ],
         }];
 
-        let portfolio: Portfolio = kelly_allocate(test_candidates, MAX_ITER).unwrap();
+        let logger = create_logger();
+        let portfolio: Portfolio = kelly_allocate(test_candidates, MAX_ITER, &logger).unwrap();
 
         assert_eq!(portfolio.companies.len(), 1);
         assert!(
@@ -379,7 +412,10 @@ mod test {
 
     #[test]
     fn test_allocate_returns_an_error_when_maximum_iterations_exceeded() {
-        let e = kelly_allocate(generate_test_candidates(), 1).err().unwrap();
+        let logger = create_logger();
+        let e = kelly_allocate(generate_test_candidates(), 1, &logger)
+            .err()
+            .unwrap();
         assert_eq!(e.code, "newton-raphson-didnt-converge");
         assert!(e
             .message
@@ -409,7 +445,10 @@ mod test {
             ],
         });
 
-        let e = kelly_allocate(test_candidates, MAX_ITER).err().unwrap();
+        let logger = create_logger();
+        let e = kelly_allocate(test_candidates, MAX_ITER, &logger)
+            .err()
+            .unwrap();
         assert_eq!(e.code, "negative-fraction-after-solution");
         assert!(e
             .message
@@ -438,7 +477,10 @@ mod test {
             ],
         });
 
-        let e = kelly_allocate(test_candidates, MAX_ITER).err().unwrap();
+        let logger = create_logger();
+        let e = kelly_allocate(test_candidates, MAX_ITER, &logger)
+            .err()
+            .unwrap();
         assert_eq!(e.code, "jacobian-inversion-failed");
         assert!(e
             .message
