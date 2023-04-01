@@ -24,4 +24,5 @@ serde_yaml = "0.9.17"
 slog = "2.7.0"
 slog-async = "2.7.0"
 slog-term = "2.9.0"
+time = "0.3.20"  # TODO: Remove once dropshot version updates it so we don't have the vulnerability
 tokio = { version = "1.26.0", features = ["full"] }
