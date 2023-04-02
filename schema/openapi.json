@@ -312,12 +312,13 @@
   },
   "info": {
     "title": "Portfolio",
-    "version": "v1"
+    "version": "v0"
   },
   "openapi": "3.0.3",
   "paths": {
     "/allocate": {
       "post": {
+        "description": "companies. Incorporates a small margin of safety by: - Disallowing companies with negative expected return (would result in shorting), - Disallowing use of leverage (i.e. the sum of all resulting fractions does not exceed 1). Of course, the biggest margin of safety should come from the conservative assumptions in the input data.",
         "operationId": "allocate_endpoint",
         "requestBody": {
           "content": {
@@ -347,7 +348,7 @@
             "$ref": "#/components/responses/Error"
           }
         },
-        "summary": "Endpoint for calculating optimal allocation given portfolio candidates",
+        "summary": "Calculates optimal allocation that maximizes long-term growth of assets for a set of candidate",
         "tags": [
           "allocate"
         ]
@@ -384,7 +385,7 @@
             "$ref": "#/components/responses/Error"
           }
         },
-        "summary": "Endpoint for analyzing the porftolio",
+        "summary": "Analyze the porftolio by calculating useful statistics",
         "tags": [
           "analyze"
         ]

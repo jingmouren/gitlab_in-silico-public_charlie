@@ -1,3 +1,5 @@
+extern crate core;
+
 pub mod allocation;
 pub mod analysis;
 pub mod env;
@@ -7,7 +9,7 @@ pub mod validation;
 use crate::allocation::{kelly_allocate, MAX_ITER};
 use crate::analysis::{all_outcomes, worst_case_outcome};
 use crate::analysis::{cumulative_probability_of_loss, expected_return};
-use crate::env::get_schema_file_path;
+use crate::env::get_openapi_schema_dir;
 use crate::model::company::Company;
 use crate::model::errors::Error;
 use crate::model::portfolio::{Portfolio, PortfolioCandidates};
@@ -19,31 +21,39 @@ use crate::validation::result::Severity::ERROR;
 use crate::validation::result::ValidationResult;
 use crate::validation::validate::Validate;
 use dropshot::{endpoint, HttpError, HttpResponseOk, RequestContext, TypedBody};
-use serde_json::Value;
+use http::{Response, StatusCode};
+use hyper::Body;
 use slog::{info, Logger};
 use std::collections::HashSet;
 use std::fs;
 
-/// Endpoint for getting the OpenAPI definition. Read it from the project directory
+/// OpenAPI documentation
 #[endpoint {
     method = GET,
     path = "/api",
-    tags = [ "api" ],
+    tags = [ "api" ]
 }]
-pub async fn openapi(_rqctx: RequestContext<()>) -> Result<HttpResponseOk<Value>, HttpError> {
-    let schema_file_path = get_schema_file_path();
-    let schema_file = fs::File::open(schema_file_path.clone()).unwrap_or_else(|_| {
+pub async fn openapi(_rqctx: RequestContext<()>) -> Result<Response<Body>, HttpError> {
+    let index_file_path = get_openapi_schema_dir().join("index.html");
+    let index = fs::read_to_string(index_file_path.clone()).unwrap_or_else(|_| {
         panic!(
-            "Did not manage to open schema file at: {:?}",
-            schema_file_path
+            "Did not manage to read index file at: {:?}",
+            index_file_path
         )
     });
-    Ok(HttpResponseOk(
-        serde_json::from_reader(schema_file).expect("Did not manage to deserialize schema."),
-    ))
+
+    Ok(Response::builder()
+        .status(StatusCode::OK)
+        .header(http::header::CONTENT_TYPE, "text/html")
+        .body(index.into())?)
 }
 
-/// Endpoint for calculating optimal allocation given portfolio candidates
+/// Calculates optimal allocation that maximizes long-term growth of assets for a set of candidate
+/// companies. Incorporates a small margin of safety by:
+/// - Disallowing companies with negative expected return (would result in shorting),
+/// - Disallowing use of leverage (i.e. the sum of all resulting fractions does not exceed 1).
+/// Of course, the biggest margin of safety should come from the conservative assumptions in the
+/// input data.
 #[endpoint {
     method = POST,
     path = "/allocate",
@@ -56,7 +66,7 @@ pub async fn allocate_endpoint(
     allocate(body.into_inner(), &rqctx.log)
 }
 
-/// Endpoint for analyzing the porftolio
+/// Analyze the porftolio by calculating useful statistics
 #[endpoint {
     method = POST,
     path = "/analyze",
