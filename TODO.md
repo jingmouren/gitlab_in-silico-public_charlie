@@ -20,10 +20,12 @@ Minimum:
 - [x] Move from rocket to dropshot
 - [x] Generate OpenAPI schema in dropshot
 - [x] Set-up logging
+- [x] Figure out how to serve Swagger UI
 
 Future improvements:
-- [ ] Figure out how to serve Swagger schema
-- [ ] Add a test for monitoring schema changes
+- [ ] Add a test for monitoring schema and index.html changes.
+  - Notes:
+    - HTML gen: npx @redocly/cli build-docs schema/openapi.json  -o schema/index.html
 - [ ] Update README.md
 - [ ] Improve test coverage
 - [ ] Create/find macro for assertion with tolerance

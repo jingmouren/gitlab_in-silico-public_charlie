@@ -1,5 +1,5 @@
 use dropshot::ApiDescription;
-use portfolio::env::{create_logger, get_schema_file_path};
+use portfolio::env::{create_logger, get_openapi_schema_dir};
 use portfolio::{allocate_endpoint, analyze_endpoint};
 use slog::info;
 use std::fs;
@@ -11,7 +11,7 @@ fn main() {
         "Creating JSON schema for all input and output data structures..."
     );
 
-    let schema_file_path = get_schema_file_path();
+    let schema_file_path = get_openapi_schema_dir().join("openapi.json");
 
     info!(logger, "Registering API endpoints.");
     let mut api = ApiDescription::new();
@@ -25,7 +25,7 @@ fn main() {
     fs::write(
         schema_file_path,
         serde_json::to_string_pretty(
-            &api.openapi("Portfolio", "v1")
+            &api.openapi("Portfolio", "v0")
                 .json()
                 .expect("Failed to convert OpenAPIDefinition to JSON."),
         )
@@ -35,3 +35,5 @@ fn main() {
 
     info!(logger, "Done.");
 }
+
+// TODO: Add a test for schema generation

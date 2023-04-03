@@ -9,9 +9,9 @@ pub fn create_logger() -> Logger {
     Logger::root(drain, o!())
 }
 
-/// Gets schema file path which is in PROJECT_DIR/schema/openapi_schema.json
+/// Gets schema directory which is in PROJECT_DIR/schema/openapi_schema.json
 /// Assumes that the executable calling this function is in PROJECT_DIR/src/bin
-pub fn get_schema_file_path() -> PathBuf {
+pub fn get_openapi_schema_dir() -> PathBuf {
     let this_file_path =
         std::env::current_exe().expect("Can't get path of the current executable.");
     let project_root_dir = this_file_path
@@ -21,5 +21,5 @@ pub fn get_schema_file_path() -> PathBuf {
         .expect("Can't get second parent of this file.")
         .parent()
         .expect("Can't get third parent of this file");
-    project_root_dir.join("schema").join("openapi_schema.json")
+    project_root_dir.join("schema")
 }
