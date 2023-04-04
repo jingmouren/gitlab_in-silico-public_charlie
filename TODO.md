@@ -23,16 +23,18 @@ Minimum:
 - [x] Figure out how to serve Swagger UI
 
 Future improvements:
+- [ ] Pass logging level to create_logger function to suppress logs in tests
 - [ ] Add a test for monitoring schema and index.html changes.
   - Notes:
     - HTML gen: npx @redocly/cli build-docs schema/openapi.json  -o schema/index.html
 - [ ] Update README.md
 - [ ] Improve test coverage
-- [ ] Create/find macro for assertion with tolerance
+- [ ] Write/find macro for assertion with tolerance
 - [ ] API trait with controller and http client
 - [ ] Command line interface
 - [ ] Special (direct) handling of single company Kelly allocation
-- [ ] Figure out how to do dependency injection for the Logger object that's passed around
+- [ ] Consider dependency injection for the Logger object that's passed around
+- [ ] Add renovate bot
 
 Future features:
 - [ ] Constraint for maximum allowable risk of permanent loss of capital

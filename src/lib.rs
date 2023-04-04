@@ -66,7 +66,7 @@ pub async fn allocate_endpoint(
     allocate(body.into_inner(), &rqctx.log)
 }
 
-/// Analyze the porftolio by calculating useful statistics
+/// Analyze the portfolio by calculating useful statistics
 #[endpoint {
     method = POST,
     path = "/analyze",

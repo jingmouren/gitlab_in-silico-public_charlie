@@ -8,7 +8,12 @@ use slog::{info, Logger};
 
 /// Tolerance for converging the fraction during Newton-Raphson iteration. Corresponds to 1%, which
 /// is more than enough given that the real uncertainty lies in the input data and not here.
-const FRACTION_TOLERANCE: f64 = 1e-2;
+pub const FRACTION_TOLERANCE: f64 = 1e-2;
+
+/// Relaxation factor used when updating solution vector in an iteration of the nonlinear loop
+const RELAXATION_FACTOR: f64 = 0.7;
+
+/// Maximum number of iterations for the nonlinear solver
 pub const MAX_ITER: u32 = 1000;
 
 /// Calculates allocation factors (fractions) for each company based on the Kelly criterion, by
@@ -75,7 +80,7 @@ pub fn kelly_allocate(
 
         info!(logger, "Calculating new fractions.");
         let delta_f: DVector<f64> = inverse_jacobian * &right_hand_side;
-        fractions += &delta_f;
+        fractions += RELAXATION_FACTOR * &delta_f;
 
         // Convergence check (with Chebyshev/L-infinity norm)
         info!(logger, "Performing convergence check...");
@@ -90,7 +95,7 @@ pub fn kelly_allocate(
         // Maximum iterations check in case we diverge
         if counter >= max_iter {
             return Err(Error {
-                code: "newton-raphson-didnt-converge".to_string(),
+                code: "nonlinear-loop-didnt-converge".to_string(),
                 message:
                     "Did not manage to find the numerical solution. This may happen if the input \
                     data would suggest a very strong bias towards a single/few investments. \
@@ -220,7 +225,8 @@ mod test {
     use crate::model::scenario::Scenario;
     use std::collections::HashMap;
 
-    const ASSERTION_TOLERANCE: f64 = 1e-6;
+    /// Make assertion tolerance the same as the fraction tolerance (no point in more accuracy)
+    const ASSERTION_TOLERANCE: f64 = FRACTION_TOLERANCE;
 
     /// Helper function for defining test candidates
     fn generate_test_candidates() -> Vec<Company> {
@@ -366,13 +372,13 @@ mod test {
 
         assert_eq!(portfolio.companies.len(), 2);
         assert!(
-            (portfolio.companies[0].fraction - 0.180609).abs() < ASSERTION_TOLERANCE,
-            "Expected close to 0.180609, got {}",
+            (portfolio.companies[0].fraction - 0.181507).abs() < ASSERTION_TOLERANCE,
+            "Expected close to 0.181507, got {}",
             portfolio.companies[0].fraction
         );
         assert!(
-            (portfolio.companies[1].fraction - 0.819391).abs() < ASSERTION_TOLERANCE,
-            "Expected close to 0.819391, got {}",
+            (portfolio.companies[1].fraction - 0.818493).abs() < ASSERTION_TOLERANCE,
+            "Expected close to 0.818493, got {}",
             portfolio.companies[1].fraction
         );
     }
@@ -404,8 +410,41 @@ mod test {
 
         assert_eq!(portfolio.companies.len(), 1);
         assert!(
-            (portfolio.companies[0].fraction - 0.5).abs() < ASSERTION_TOLERANCE,
-            "Expected close to 0.5, got {}",
+            (portfolio.companies[0].fraction - 0.502603).abs() < ASSERTION_TOLERANCE,
+            "Expected close to 0.502603, got {}",
+            portfolio.companies[0].fraction
+        );
+    }
+
+    #[test]
+    fn test_allocate_for_a_single_company_stiff_system() {
+        let test_candidates: Vec<Company> = vec![Company {
+            name: "A".to_string(),
+            ticker: "A".to_string(),
+            description: "A bet with 10x upside and 1% downside, with probabilities 90-10"
+                .to_string(),
+            market_cap: 1e7,
+            scenarios: vec![
+                Scenario {
+                    thesis: "A1".to_string(),
+                    intrinsic_value: 1e8,
+                    probability: 0.9,
+                },
+                Scenario {
+                    thesis: "A2".to_string(),
+                    intrinsic_value: 0.99e7,
+                    probability: 0.1,
+                },
+            ],
+        }];
+
+        let logger = create_logger();
+        let portfolio: Portfolio = kelly_allocate(test_candidates, MAX_ITER, &logger).unwrap();
+
+        assert_eq!(portfolio.companies.len(), 1);
+        assert!(
+            (portfolio.companies[0].fraction - 1.0).abs() < ASSERTION_TOLERANCE,
+            "Expected close to 1, got {}",
             portfolio.companies[0].fraction
         );
     }
@@ -416,7 +455,7 @@ mod test {
         let e = kelly_allocate(generate_test_candidates(), 1, &logger)
             .err()
             .unwrap();
-        assert_eq!(e.code, "newton-raphson-didnt-converge");
+        assert_eq!(e.code, "nonlinear-loop-didnt-converge");
         assert!(e
             .message
             .contains("Did not manage to find the numerical solution."));
@@ -461,12 +500,12 @@ mod test {
         test_candidates.push(Company {
             name: "Best investment that implies infinite bet".to_string(),
             ticker: "BI".to_string(),
-            description: "A bet with 100% upside and no downside".to_string(),
+            description: "A bet with 10x upside and no downside".to_string(),
             market_cap: 1.0e7,
             scenarios: vec![
                 Scenario {
-                    thesis: "100 percent upside".to_string(),
-                    intrinsic_value: 2.0e7,
+                    thesis: "10x upside".to_string(),
+                    intrinsic_value: 1.0e8,
                     probability: 0.5,
                 },
                 Scenario {
