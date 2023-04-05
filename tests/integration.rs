@@ -1,4 +1,4 @@
-use portfolio::allocation::{kelly_allocate, MAX_ITER, FRACTION_TOLERANCE};
+use portfolio::allocation::{kelly_allocate, FRACTION_TOLERANCE, MAX_ITER};
 use portfolio::env::create_logger;
 use portfolio::model::portfolio::PortfolioCandidates;
 use portfolio::model::responses::{AllocationResponse, AnalysisResponse, TickerAndFraction};
@@ -282,15 +282,13 @@ fn test_analyze() {
         analysis_result.worst_case_outcome.probability
     );
     assert!(
-        (analysis_result.worst_case_outcome.weighted_return + 0.944).abs()
-            < ASSERTION_TOLERANCE,
+        (analysis_result.worst_case_outcome.weighted_return + 0.944).abs() < ASSERTION_TOLERANCE,
         "Expected close to -0.944, got {}",
         analysis_result.worst_case_outcome.weighted_return
     );
 
     assert!(
-        (analysis_result.cumulative_probability_of_loss - 0.19).abs()
-            < ASSERTION_TOLERANCE,
+        (analysis_result.cumulative_probability_of_loss - 0.19).abs() < ASSERTION_TOLERANCE,
         "Expected close to 0.19, got {}",
         analysis_result.cumulative_probability_of_loss
     );
