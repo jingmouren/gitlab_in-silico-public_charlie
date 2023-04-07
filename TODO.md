@@ -31,11 +31,12 @@ Future improvements:
 - [ ] Write/find macro for assertion with tolerance
 - [ ] API trait with controller and http client
 - [ ] Command line interface
-- [ ] Special (direct) handling of single company Kelly allocation
 - [ ] Consider dependency injection for the Logger object that's passed around
 - [ ] Add renovate bot
 
 Future features:
 - [ ] Constraint for maximum allowable risk of permanent loss of capital
-- [ ] Constraint for no shorting (instead of filtering based on negative expected value)
 - [ ] Constraint for no leverage (instead of normalization)
+- [ ] Constraint for no shorting (instead of filtering based on negative expected value)
+- [ ] Simulation of different outcomes to gauge how the assumption of infinite bets holds for a representative example
+      (e.g. someone adding assets to the portfolio every quarter or so for 30+ years) 

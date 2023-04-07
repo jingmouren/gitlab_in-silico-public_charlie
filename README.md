@@ -3,7 +3,7 @@
 Epictetus is here to help you out with the investment process by reminding you that you should spend the majority of
 your time analyzing investments, independently of outside thoughts and events. It will also remind you that you should
 take into account unpredictable external events. In fact, Epictetus won't help you if you're analyzing a company for 
-which you cannot think of at least small downside scenario.
+which you cannot think of at least one downside scenario.
 
 Note that **Epictetus can give you advice, but he cannot give you conduct**. If you find yourself using this tool very
 often by changing inputs to match your preconceived expectations, then you're probably on the wrong path.
@@ -11,12 +11,12 @@ often by changing inputs to match your preconceived expectations, then you're pr
 ### How should you work together with Epictetus?
 
 You should work together with Epictetus in the following way:
-- You spend 99.99% of your time thinking about companies that you'd like to invest it and providing different scenarios
+- You spend 99.99% of your time thinking about companies that you'd like to invest in, and providing different scenarios
   for each company. A scenario is described by your estimate of the intrinsic value and the probability that this
   intrinsic value will be realized at some point in the future.
 - Epictetus will then take your inputs and calculate optimal allocation percentage for the candidate companies, by
-  maximizing long-term growth rate of your assets. This is essentially equivalent to Kelly's approach, but generalized
-  for multiple simultaneous investments in a focused-like portfolio.
+  maximizing long-term growth rate of your assets. This is equivalent to Kelly's approach, but generalized for multiple
+  simultaneous investments in a focused portfolio.
 
 ### What Epictetus won't allow you to do?
 
@@ -24,17 +24,22 @@ Epictetus won't allow you to:
 - Invest in companies that have negative expected return based on your inputs. In other words, it won't let you go
   short,
 - Invest in companies that do not have a downside. If a company truly didn't have a downside, you should lever up
-  infinitely and put all your assets into this company, which is usually not a good idea unless you have a founder-like
-  insight into a fairly predictable business,
-- Use leverage, because you shouldn't be in a hurry to get rich, although the purely mathematical solution would
+  infinitely and put all your assets into it, which is usually not a good idea unless you have a founder-like insight
+  into a fairly predictable business, in which case you don't need Epictetus,
+- Use leverage, because you shouldn't be in a hurry to get rich, although purely mathematical solution would
   oftentimes imply use of leverage.
 
-### Assumptions
+### Disclaimer
 
-During the mathematical derivation of the problem (optimizing long-term growth rate), an assumption that the number of
-similar bets with similar outcomes is very high (tends to infinity). I don't have a hard mathematical proof that this is
-completely ok for a focused investment strategy, although I feel confident it is iff one considers the following margins
-of safety:
+Calculating intrinsic value of a company is more of an art than science, especially for a high-quality, growth
+businesses within your circle of competence. And according to Charlie Munger, Warren Buffett, Monish Pabrai and the
+like, one should focus precisely on getting such great businesses for a fair price. That means that you shouldn't take
+what Epictetus says at face value, and you should probably use his guidance infrequently.
+
+During the mathematical derivation of the problem (optimizing long-term growth rate), an assumption is made that the
+number of similar bets with similar outcomes is very high (tends to infinity). I don't have a hard mathematical proof
+that this is completely ok for a focused investment strategy, although I feel confident it is ok iff one considers the
+following margins of safety:
 1. No shorting allowed,
 2. No use of leverage allowed,
 3. No companies without at least one downside scenario are allowed,
@@ -80,7 +85,7 @@ Project structure follows the recommended practices for `rust` projects:
     - `cargo run --example allocate_client`
     - `cargo run --example analyze_client`
 
-## CI
+## Continuous Integration
 
 The CI pipeline consists of format check, linter check, security check, unit and integration tests, and running the
 server with two client examples. See `.gitlab-ci.yml` for details.
