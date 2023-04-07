@@ -5,7 +5,7 @@ your time analyzing investments, independently of outside thoughts and events. I
 take into account unpredictable external events. In fact, Epictetus won't help you if you're analyzing a company for 
 which you cannot think of at least small downside scenario.
 
-Note that *Epictetus can give you advice, but he cannot give you conduct*. If you find yourself using this tool very
+Note that **Epictetus can give you advice, but he cannot give you conduct**. If you find yourself using this tool very
 often by changing inputs to match your preconceived expectations, then you're probably on the wrong path.
 
 ### How should you work together with Epictetus?
@@ -31,7 +31,14 @@ Epictetus won't allow you to:
 
 ### Assumptions
 
-TODO
+During the mathematical derivation of the problem (optimizing long-term growth rate), an assumption that the number of
+similar bets with similar outcomes is very high (tends to infinity). I don't have a hard mathematical proof that this is
+completely ok for a focused investment strategy, although I feel confident it is iff one considers the following margins
+of safety:
+1. No shorting allowed,
+2. No use of leverage allowed,
+3. No companies without at least one downside scenario are allowed,
+4. And by far most importantly, conservative input assumptions should be provided.
 
 ## Project
 

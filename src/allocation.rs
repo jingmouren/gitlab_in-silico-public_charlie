@@ -220,7 +220,7 @@ fn kelly_criterion_jacobian(outcomes: &[Outcome], portfolio: &Portfolio) -> DMat
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::env::create_logger;
+    use crate::env::create_test_logger;
     use crate::model::company::Company;
     use crate::model::scenario::Scenario;
     use std::collections::HashMap;
@@ -366,7 +366,7 @@ mod test {
 
     #[test]
     fn test_allocate() {
-        let logger = create_logger();
+        let logger = create_test_logger();
         let test_candidates: Vec<Company> = generate_test_candidates();
         let portfolio: Portfolio = kelly_allocate(test_candidates, MAX_ITER, &logger).unwrap();
 
@@ -405,7 +405,7 @@ mod test {
             ],
         }];
 
-        let logger = create_logger();
+        let logger = create_test_logger();
         let portfolio: Portfolio = kelly_allocate(test_candidates, MAX_ITER, &logger).unwrap();
 
         assert_eq!(portfolio.companies.len(), 1);
@@ -438,7 +438,7 @@ mod test {
             ],
         }];
 
-        let logger = create_logger();
+        let logger = create_test_logger();
         let portfolio: Portfolio = kelly_allocate(test_candidates, MAX_ITER, &logger).unwrap();
 
         assert_eq!(portfolio.companies.len(), 1);
@@ -451,7 +451,7 @@ mod test {
 
     #[test]
     fn test_allocate_returns_an_error_when_maximum_iterations_exceeded() {
-        let logger = create_logger();
+        let logger = create_test_logger();
         let e = kelly_allocate(generate_test_candidates(), 1, &logger)
             .err()
             .unwrap();
@@ -484,7 +484,7 @@ mod test {
             ],
         });
 
-        let logger = create_logger();
+        let logger = create_test_logger();
         let e = kelly_allocate(test_candidates, MAX_ITER, &logger)
             .err()
             .unwrap();
@@ -516,7 +516,7 @@ mod test {
             ],
         });
 
-        let logger = create_logger();
+        let logger = create_test_logger();
         let e = kelly_allocate(test_candidates, MAX_ITER, &logger)
             .err()
             .unwrap();

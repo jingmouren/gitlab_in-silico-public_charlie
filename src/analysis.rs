@@ -166,7 +166,7 @@ pub fn cumulative_probability_of_loss(outcomes: &[Outcome], logger: &Logger) -> 
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::env::create_logger;
+    use crate::env::create_test_logger;
     use crate::model::company;
     use crate::model::company::Company;
     use crate::model::portfolio::{Portfolio, PortfolioCompany};
@@ -289,7 +289,7 @@ mod test {
             }],
         };
 
-        let logger = create_logger();
+        let logger = create_test_logger();
         assert!(expected_return(&test_portfolio, &logger) < company::TOLERANCE);
     }
 
@@ -319,7 +319,7 @@ mod test {
             }],
         };
 
-        let logger = create_logger();
+        let logger = create_test_logger();
         assert!((expected_return(&test_portfolio, &logger) - 0.6).abs() < company::TOLERANCE);
     }
 
@@ -327,7 +327,7 @@ mod test {
     fn test_expected_value_three_assets() {
         let test_portfolio = get_test_portfolio_with_three_assets();
 
-        let logger = create_logger();
+        let logger = create_test_logger();
         assert!((expected_return(&test_portfolio, &logger) - 0.285).abs() < company::TOLERANCE);
     }
 
@@ -498,7 +498,7 @@ mod test {
 
     #[test]
     fn test_worst_case_scenario() {
-        let logger = create_logger();
+        let logger = create_test_logger();
 
         let test_portfolio = get_test_portfolio_with_three_assets();
         let all_outcomes = all_outcomes(&test_portfolio).unwrap();
@@ -520,7 +520,7 @@ mod test {
 
     #[test]
     fn test_cumulative_probability_of_loss() {
-        let logger = create_logger();
+        let logger = create_test_logger();
 
         let test_portfolio = get_test_portfolio_with_three_assets();
         let all_outcomes = all_outcomes(&test_portfolio).unwrap();

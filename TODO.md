@@ -24,8 +24,8 @@ Minimum:
 
 Future improvements:
 - [x] Update README.md
-- [ ] Rename the project
-- [ ] Pass logging level to create_logger function to suppress logs in tests
+- [x] Rename the project
+- [x] Pass logging level to create_logger function to suppress logs in tests
 - [ ] Add a test for monitoring schema and index.html changes.
 - [ ] Improve test coverage
 - [ ] Write/find macro for assertion with tolerance

@@ -1,5 +1,5 @@
 use portfolio::allocation::{kelly_allocate, FRACTION_TOLERANCE, MAX_ITER};
-use portfolio::env::create_logger;
+use portfolio::env::create_test_logger;
 use portfolio::model::portfolio::PortfolioCandidates;
 use portfolio::model::responses::{AllocationResponse, AnalysisResponse, TickerAndFraction};
 use portfolio::validation::result::ValidationResult;
@@ -197,7 +197,7 @@ fn test_create_candidates_and_validate() {
     assert_eq!(candidates.companies[5].scenarios[2].probability, 0.7);
 
     // Assert that there are no validation issues
-    let logger = create_logger();
+    let logger = create_test_logger();
     let validation_errors: Vec<ValidationResult> = validate(&candidates, &logger);
     assert_eq!(validation_errors, vec![]);
 }
@@ -205,7 +205,7 @@ fn test_create_candidates_and_validate() {
 #[test]
 fn test_allocate() {
     // Create candidates and validate them
-    let logger = create_logger();
+    let logger = create_test_logger();
     let candidates: PortfolioCandidates = serde_yaml::from_str(&TEST_YAML.to_string()).unwrap();
     let validation_errors: Vec<ValidationResult> = validate(&candidates, &logger);
     assert_eq!(validation_errors, vec![]);
@@ -263,7 +263,7 @@ fn test_allocate() {
 #[test]
 fn test_analyze() {
     // Create candidates and validate them
-    let logger = create_logger();
+    let logger = create_test_logger();
     let candidates: PortfolioCandidates = serde_yaml::from_str(&TEST_YAML.to_string()).unwrap();
     let validation_errors: Vec<ValidationResult> = validate(&candidates, &logger);
     assert_eq!(validation_errors, vec![]);

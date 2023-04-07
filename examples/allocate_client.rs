@@ -3,7 +3,7 @@ use portfolio::env::create_logger;
 use portfolio::model::portfolio::PortfolioCandidates;
 use portfolio::model::responses::AllocationResponse;
 use reqwest::StatusCode;
-use slog::info;
+use slog::{info, Level};
 
 /// Make assertion tolerance the same as the fraction tolerance (no point in more accuracy)
 const ASSERTION_TOLERANCE: f64 = FRACTION_TOLERANCE;
@@ -66,7 +66,7 @@ const TEST_YAML: &str = "
 
 /// Calls allocate endpoint on the localhost:8000 and asserts the results
 fn main() {
-    let logger = create_logger();
+    let logger = create_logger(Level::Info);
 
     // Create candidates and post
     info!(logger, "Preparing to post candidates to allocate endpoint.");
