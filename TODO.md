@@ -23,11 +23,12 @@ Minimum:
 - [x] Figure out how to serve Swagger UI
 
 Future improvements:
+- [ ] Update README.md
+- [ ] Rename the project
 - [ ] Pass logging level to create_logger function to suppress logs in tests
 - [ ] Add a test for monitoring schema and index.html changes.
   - Notes:
     - HTML gen: npx @redocly/cli build-docs schema/openapi.json  -o schema/index.html
-- [ ] Update README.md
 - [ ] Improve test coverage
 - [ ] Write/find macro for assertion with tolerance
 - [ ] API trait with controller and http client

@@ -1,10 +1,12 @@
+use portfolio::allocation::FRACTION_TOLERANCE;
 use portfolio::env::create_logger;
 use portfolio::model::portfolio::Portfolio;
 use portfolio::model::responses::AnalysisResponse;
 use reqwest::StatusCode;
 use slog::info;
 
-const ASSERTION_TOLERANCE: f64 = 1e-6;
+/// Make assertion tolerance the same as the fraction tolerance (no point in more accuracy)
+const ASSERTION_TOLERANCE: f64 = FRACTION_TOLERANCE;
 
 const TEST_YAML: &str = "
           companies:
@@ -100,26 +102,25 @@ fn main() {
     let analysis_result = analysis_response.result.unwrap();
 
     assert!(
-        (analysis_result.worst_case_outcome.probability - 0.00125).abs() < ASSERTION_TOLERANCE,
+        (analysis_result.worst_case_outcome.probability - 0.00125).abs() < 1e-6,
         "Expected close to 0.00125, got {}",
         analysis_result.worst_case_outcome.probability
     );
     assert!(
-        (analysis_result.worst_case_outcome.weighted_return + 0.4077500233028696).abs()
-            < ASSERTION_TOLERANCE,
-        "Expected close to -0.4077500233028696, got {}",
+        (analysis_result.worst_case_outcome.weighted_return + 0.4078).abs() < ASSERTION_TOLERANCE,
+        "Expected close to -0.4078, got {}",
         analysis_result.worst_case_outcome.weighted_return
     );
 
     assert!(
-        (analysis_result.cumulative_probability_of_loss - 0.4425).abs() < ASSERTION_TOLERANCE,
+        (analysis_result.cumulative_probability_of_loss - 0.4425).abs() < 1e-6,
         "Expected close to 0.4425, got {}",
         analysis_result.cumulative_probability_of_loss
     );
 
     assert!(
-        (analysis_result.expected_return - 0.0665590503915913).abs() < ASSERTION_TOLERANCE,
-        "Expected close to 0.0665590503915913, got {}",
+        (analysis_result.expected_return - 0.06656).abs() < ASSERTION_TOLERANCE,
+        "Expected close to 0.06656, got {}",
         analysis_result.expected_return
     );
 

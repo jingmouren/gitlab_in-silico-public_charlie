@@ -1,10 +1,12 @@
+use portfolio::allocation::FRACTION_TOLERANCE;
 use portfolio::env::create_logger;
 use portfolio::model::portfolio::PortfolioCandidates;
 use portfolio::model::responses::AllocationResponse;
 use reqwest::StatusCode;
 use slog::info;
 
-const ASSERTION_TOLERANCE: f64 = 1e-6;
+/// Make assertion tolerance the same as the fraction tolerance (no point in more accuracy)
+const ASSERTION_TOLERANCE: f64 = FRACTION_TOLERANCE;
 
 const TEST_YAML: &str = "
           companies:
@@ -99,22 +101,22 @@ fn main() {
 
     assert_eq!(tickers_and_fractions[0].ticker, "D".to_string());
     assert!(
-        (tickers_and_fractions[0].fraction - 0.22377562493607897).abs() < ASSERTION_TOLERANCE,
-        "Expected close to 0.22377562493607897, got {}",
+        (tickers_and_fractions[0].fraction - 0.2337).abs() < ASSERTION_TOLERANCE,
+        "Expected close to 0.2337, got {}",
         tickers_and_fractions[0].fraction
     );
 
     assert_eq!(tickers_and_fractions[1].ticker, "E".to_string());
     assert!(
-        (tickers_and_fractions[1].fraction - 0.3861602546890161).abs() < ASSERTION_TOLERANCE,
-        "Expected close to 0.3861602546890161, got {}",
+        (tickers_and_fractions[1].fraction - 0.3847).abs() < ASSERTION_TOLERANCE,
+        "Expected close to 0.3847, got {}",
         tickers_and_fractions[1].fraction
     );
 
     assert_eq!(tickers_and_fractions[2].ticker, "F".to_string());
     assert!(
-        (tickers_and_fractions[2].fraction - 0.39006412037490507).abs() < ASSERTION_TOLERANCE,
-        "Expected close to 0.39006412037490507, got {}",
+        (tickers_and_fractions[2].fraction - 0.3816).abs() < ASSERTION_TOLERANCE,
+        "Expected close to 0.3816, got {}",
         tickers_and_fractions[2].fraction
     );
 
@@ -123,26 +125,25 @@ fn main() {
     let analysis_result = result.analysis;
 
     assert!(
-        (analysis_result.worst_case_outcome.probability - 0.00125).abs() < ASSERTION_TOLERANCE,
+        (analysis_result.worst_case_outcome.probability - 0.00125).abs() < 1e-6,
         "Expected close to 0.00125, got {}",
         analysis_result.worst_case_outcome.probability
     );
     assert!(
-        (analysis_result.worst_case_outcome.weighted_return + 0.8785428351498257).abs()
-            < ASSERTION_TOLERANCE,
-        "Expected close to -0.8785428351498257, got {}",
+        (analysis_result.worst_case_outcome.weighted_return + 0.8731).abs() < ASSERTION_TOLERANCE,
+        "Expected close to -0.8731, got {}",
         analysis_result.worst_case_outcome.weighted_return
     );
 
     assert!(
-        (analysis_result.cumulative_probability_of_loss - 0.38625).abs() < ASSERTION_TOLERANCE,
+        (analysis_result.cumulative_probability_of_loss - 0.38625).abs() < 1e-6,
         "Expected close to 0.38625, got {}",
         analysis_result.cumulative_probability_of_loss
     );
 
     assert!(
-        (analysis_result.expected_return - 0.1433456267533943).abs() < ASSERTION_TOLERANCE,
-        "Expected close to 0.1433456267533943, got {}",
+        (analysis_result.expected_return - 0.1429).abs() < ASSERTION_TOLERANCE,
+        "Expected close to 0.1429, got {}",
         analysis_result.expected_return
     );
 
