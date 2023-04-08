@@ -3,7 +3,7 @@ use dropshot::{
     ApiDescription, ConfigDropshot, ConfigLogging, ConfigLoggingIfExists, ConfigLoggingLevel,
     HttpServerStarter,
 };
-use portfolio::{allocate_endpoint, analyze_endpoint, openapi};
+use epictetus::{allocate_endpoint, analyze_endpoint, openapi};
 use slog::info;
 use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
 

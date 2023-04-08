@@ -223,6 +223,7 @@ mod test {
     use crate::env::create_test_logger;
     use crate::model::company::Company;
     use crate::model::scenario::Scenario;
+    use crate::utils::assert_close;
     use std::collections::HashMap;
 
     /// Make assertion tolerance the same as the fraction tolerance (no point in more accuracy)
@@ -322,17 +323,8 @@ mod test {
 
         let kelly = kelly_criterion(&outcomes, &portfolio);
 
-        assert!(
-            (kelly[0] - 0.011111111).abs() < ASSERTION_TOLERANCE,
-            "Kelly value at 0 is: {}",
-            kelly[0]
-        );
-
-        assert!(
-            (kelly[1] - 0.166666666).abs() < ASSERTION_TOLERANCE,
-            "Kelly value at 1 is: {}",
-            kelly[1]
-        );
+        assert_close!(0.011111111, kelly[0], ASSERTION_TOLERANCE);
+        assert_close!(0.166666666, kelly[1], ASSERTION_TOLERANCE);
     }
 
     #[test]
@@ -342,26 +334,10 @@ mod test {
 
         let jacobian = kelly_criterion_jacobian(&outcomes, &portfolio);
 
-        assert!(
-            (jacobian[(0, 0)] + 0.388256908).abs() < ASSERTION_TOLERANCE,
-            "Jacobian at (0,0) is: {}",
-            jacobian[(0, 0)]
-        );
-        assert!(
-            (jacobian[(0, 1)] + 0.007451499).abs() < ASSERTION_TOLERANCE,
-            "Jacobian at (0,1) is: {}",
-            jacobian[(0, 1)]
-        );
-        assert!(
-            (jacobian[(1, 0)] + 0.007451499).abs() < ASSERTION_TOLERANCE,
-            "Jacobian at (1,0) is: {}",
-            jacobian[(1, 0)]
-        );
-        assert!(
-            (jacobian[(1, 1)] + 0.160978836).abs() < ASSERTION_TOLERANCE,
-            "Jacobian at (1,1) is: {}",
-            jacobian[(1, 1)]
-        );
+        assert_close!(-0.388256908, jacobian[(0, 0)], ASSERTION_TOLERANCE);
+        assert_close!(-0.007451499, jacobian[(0, 1)], ASSERTION_TOLERANCE);
+        assert_close!(-0.007451499, jacobian[(1, 0)], ASSERTION_TOLERANCE);
+        assert_close!(-0.160978836, jacobian[(1, 1)], ASSERTION_TOLERANCE);
     }
 
     #[test]
@@ -371,15 +347,15 @@ mod test {
         let portfolio: Portfolio = kelly_allocate(test_candidates, MAX_ITER, &logger).unwrap();
 
         assert_eq!(portfolio.companies.len(), 2);
-        assert!(
-            (portfolio.companies[0].fraction - 0.181507).abs() < ASSERTION_TOLERANCE,
-            "Expected close to 0.181507, got {}",
-            portfolio.companies[0].fraction
+        assert_close!(
+            0.181507,
+            portfolio.companies[0].fraction,
+            ASSERTION_TOLERANCE
         );
-        assert!(
-            (portfolio.companies[1].fraction - 0.818493).abs() < ASSERTION_TOLERANCE,
-            "Expected close to 0.818493, got {}",
-            portfolio.companies[1].fraction
+        assert_close!(
+            0.818493,
+            portfolio.companies[1].fraction,
+            ASSERTION_TOLERANCE
         );
     }
 
@@ -409,10 +385,10 @@ mod test {
         let portfolio: Portfolio = kelly_allocate(test_candidates, MAX_ITER, &logger).unwrap();
 
         assert_eq!(portfolio.companies.len(), 1);
-        assert!(
-            (portfolio.companies[0].fraction - 0.502603).abs() < ASSERTION_TOLERANCE,
-            "Expected close to 0.502603, got {}",
-            portfolio.companies[0].fraction
+        assert_close!(
+            0.502603,
+            portfolio.companies[0].fraction,
+            ASSERTION_TOLERANCE
         );
     }
 
@@ -442,11 +418,7 @@ mod test {
         let portfolio: Portfolio = kelly_allocate(test_candidates, MAX_ITER, &logger).unwrap();
 
         assert_eq!(portfolio.companies.len(), 1);
-        assert!(
-            (portfolio.companies[0].fraction - 1.0).abs() < ASSERTION_TOLERANCE,
-            "Expected close to 1, got {}",
-            portfolio.companies[0].fraction
-        );
+        assert_close!(1.0, portfolio.companies[0].fraction, ASSERTION_TOLERANCE);
     }
 
     #[test]

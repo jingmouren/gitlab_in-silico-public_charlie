@@ -4,6 +4,7 @@ pub mod allocation;
 pub mod analysis;
 pub mod env;
 pub mod model;
+pub mod utils;
 pub mod validation;
 
 use crate::allocation::{kelly_allocate, MAX_ITER};

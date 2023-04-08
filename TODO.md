@@ -26,9 +26,9 @@ Future improvements:
 - [x] Update README.md
 - [x] Rename the project
 - [x] Pass logging level to create_logger function to suppress logs in tests
+- [x] Write/find macro for assertion with tolerance
 - [ ] Add a test for monitoring schema and index.html changes.
 - [ ] Improve test coverage
-- [ ] Write/find macro for assertion with tolerance
 - [ ] API trait with controller and http client
 - [ ] Command line interface
 - [ ] Consider dependency injection for the Logger object that's passed around

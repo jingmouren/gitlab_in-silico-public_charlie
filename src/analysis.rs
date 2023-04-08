@@ -171,6 +171,7 @@ mod test {
     use crate::model::company::Company;
     use crate::model::portfolio::{Portfolio, PortfolioCompany};
     use crate::model::scenario::Scenario;
+    use crate::utils::assert_close;
 
     impl PartialEq<Self> for Outcome {
         fn eq(&self, other: &Self) -> bool {
@@ -290,7 +291,11 @@ mod test {
         };
 
         let logger = create_test_logger();
-        assert!(expected_return(&test_portfolio, &logger) < company::TOLERANCE);
+        assert_close!(
+            0.0,
+            expected_return(&test_portfolio, &logger),
+            company::TOLERANCE
+        );
     }
 
     #[test]
@@ -320,7 +325,11 @@ mod test {
         };
 
         let logger = create_test_logger();
-        assert!((expected_return(&test_portfolio, &logger) - 0.6).abs() < company::TOLERANCE);
+        assert_close!(
+            0.6,
+            expected_return(&test_portfolio, &logger),
+            company::TOLERANCE
+        );
     }
 
     #[test]
@@ -328,7 +337,11 @@ mod test {
         let test_portfolio = get_test_portfolio_with_three_assets();
 
         let logger = create_test_logger();
-        assert!((expected_return(&test_portfolio, &logger) - 0.285).abs() < company::TOLERANCE);
+        assert_close!(
+            0.285,
+            expected_return(&test_portfolio, &logger),
+            company::TOLERANCE
+        );
     }
 
     #[test]
@@ -526,6 +539,6 @@ mod test {
         let all_outcomes = all_outcomes(&test_portfolio).unwrap();
         let cumulative_probability_of_loss = cumulative_probability_of_loss(&all_outcomes, &logger);
 
-        assert!((cumulative_probability_of_loss - 0.22).abs() < company::TOLERANCE);
+        assert_close!(0.22, cumulative_probability_of_loss, company::TOLERANCE);
     }
 }

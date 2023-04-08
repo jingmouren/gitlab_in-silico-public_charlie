@@ -1,9 +1,11 @@
 ## Epictetus
 
-Epictetus is here to help you out with the investment process by reminding you that you should spend the majority of
-your time analyzing investments, independently of outside thoughts and events. It will also remind you that you should
-take into account unpredictable external events. In fact, Epictetus won't help you if you're analyzing a company for 
-which you cannot think of at least one downside scenario.
+Epictetus is here to help you out in portfolio allocation for a focused, value investing approach.
+
+Epictetus will remind you that you should spend the majority of your time analyzing investments and thinking about
+intrinsic values and different scenarios that might play out, independently of outside thoughts and events. Epictetus
+will also remind you that you should take into account unpredictable external events. In fact, Epictetus won't help you
+if you're analyzing a company for which you cannot think of at least one downside scenario.
 
 Note that **Epictetus can give you advice, but he cannot give you conduct**. If you find yourself using this tool very
 often by changing inputs to match your preconceived expectations, then you're probably on the wrong path.

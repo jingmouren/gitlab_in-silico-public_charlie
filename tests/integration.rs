@@ -1,9 +1,10 @@
-use portfolio::allocation::{kelly_allocate, FRACTION_TOLERANCE, MAX_ITER};
-use portfolio::env::create_test_logger;
-use portfolio::model::portfolio::PortfolioCandidates;
-use portfolio::model::responses::{AllocationResponse, AnalysisResponse, TickerAndFraction};
-use portfolio::validation::result::ValidationResult;
-use portfolio::{allocate, analyze, validate};
+use epictetus::allocation::{kelly_allocate, FRACTION_TOLERANCE, MAX_ITER};
+use epictetus::env::create_test_logger;
+use epictetus::model::portfolio::PortfolioCandidates;
+use epictetus::model::responses::{AllocationResponse, AnalysisResponse, TickerAndFraction};
+use epictetus::utils::assert_close;
+use epictetus::validation::result::ValidationResult;
+use epictetus::{allocate, analyze, validate};
 use slog::info;
 
 /// Make assertion tolerance the same as the fraction tolerance (no point in more accuracy)
@@ -218,45 +219,45 @@ fn test_allocate() {
     info!(logger, "{:?}", tickers_and_fractions);
 
     assert_eq!(tickers_and_fractions[0].ticker, "A".to_string());
-    assert!(
-        (tickers_and_fractions[0].fraction - 0.066).abs() < ASSERTION_TOLERANCE,
-        "Expected close to 0.066, got {}",
-        tickers_and_fractions[0].fraction
+    assert_close!(
+        0.066,
+        tickers_and_fractions[0].fraction,
+        ASSERTION_TOLERANCE
     );
 
     assert_eq!(tickers_and_fractions[1].ticker, "B".to_string());
-    assert!(
-        (tickers_and_fractions[1].fraction - 0.282).abs() < ASSERTION_TOLERANCE,
-        "Expected close to 0.282, got {}",
-        tickers_and_fractions[1].fraction
+    assert_close!(
+        0.282,
+        tickers_and_fractions[1].fraction,
+        ASSERTION_TOLERANCE
     );
 
     assert_eq!(tickers_and_fractions[2].ticker, "C".to_string());
-    assert!(
-        (tickers_and_fractions[2].fraction - 0.259).abs() < ASSERTION_TOLERANCE,
-        "Expected close to 0.259, got {}",
-        tickers_and_fractions[2].fraction
+    assert_close!(
+        0.259,
+        tickers_and_fractions[2].fraction,
+        ASSERTION_TOLERANCE
     );
 
     assert_eq!(tickers_and_fractions[3].ticker, "D".to_string());
-    assert!(
-        (tickers_and_fractions[3].fraction - 0.102).abs() < ASSERTION_TOLERANCE,
-        "Expected close to 0.102, got {}",
-        tickers_and_fractions[3].fraction
+    assert_close!(
+        0.102,
+        tickers_and_fractions[3].fraction,
+        ASSERTION_TOLERANCE
     );
 
     assert_eq!(tickers_and_fractions[4].ticker, "E".to_string());
-    assert!(
-        (tickers_and_fractions[4].fraction - 0.136).abs() < ASSERTION_TOLERANCE,
-        "Expected close to 0.136, got {}",
-        tickers_and_fractions[4].fraction
+    assert_close!(
+        0.136,
+        tickers_and_fractions[4].fraction,
+        ASSERTION_TOLERANCE
     );
 
     assert_eq!(tickers_and_fractions[5].ticker, "F".to_string());
-    assert!(
-        (tickers_and_fractions[5].fraction - 0.154).abs() < ASSERTION_TOLERANCE,
-        "Expected close to 0.154, got {}",
-        tickers_and_fractions[5].fraction
+    assert_close!(
+        0.154,
+        tickers_and_fractions[5].fraction,
+        ASSERTION_TOLERANCE
     );
 }
 
@@ -276,26 +277,20 @@ fn test_analyze() {
     // Print out the result for convenience
     info!(logger, "{:?}", analysis_result);
 
-    assert!(
-        (analysis_result.worst_case_outcome.probability - 3.125e-7).abs() < ASSERTION_TOLERANCE,
-        "Expected close to 3.125e-7, got {}",
-        analysis_result.worst_case_outcome.probability
+    assert_close!(
+        3.125e-7,
+        analysis_result.worst_case_outcome.probability,
+        ASSERTION_TOLERANCE
     );
-    assert!(
-        (analysis_result.worst_case_outcome.weighted_return + 0.944).abs() < ASSERTION_TOLERANCE,
-        "Expected close to -0.944, got {}",
-        analysis_result.worst_case_outcome.weighted_return
+    assert_close!(
+        -0.944,
+        analysis_result.worst_case_outcome.weighted_return,
+        ASSERTION_TOLERANCE
     );
-
-    assert!(
-        (analysis_result.cumulative_probability_of_loss - 0.19).abs() < ASSERTION_TOLERANCE,
-        "Expected close to 0.19, got {}",
-        analysis_result.cumulative_probability_of_loss
+    assert_close!(
+        0.19,
+        analysis_result.cumulative_probability_of_loss,
+        ASSERTION_TOLERANCE
     );
-
-    assert!(
-        (analysis_result.expected_return - 0.484).abs() < ASSERTION_TOLERANCE,
-        "Expected close to 0.484, got {}",
-        analysis_result.expected_return
-    );
+    assert_close!(0.484, analysis_result.expected_return, ASSERTION_TOLERANCE);
 }

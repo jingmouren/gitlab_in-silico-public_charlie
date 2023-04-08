@@ -1,7 +1,8 @@
-use portfolio::allocation::FRACTION_TOLERANCE;
-use portfolio::env::create_logger;
-use portfolio::model::portfolio::Portfolio;
-use portfolio::model::responses::AnalysisResponse;
+use epictetus::allocation::FRACTION_TOLERANCE;
+use epictetus::env::create_logger;
+use epictetus::model::portfolio::Portfolio;
+use epictetus::model::responses::AnalysisResponse;
+use epictetus::utils::assert_close;
 use reqwest::StatusCode;
 use slog::{info, Level};
 
@@ -101,27 +102,21 @@ fn main() {
     info!(logger, "Asserting analysis results.");
     let analysis_result = analysis_response.result.unwrap();
 
-    assert!(
-        (analysis_result.worst_case_outcome.probability - 0.00125).abs() < 1e-6,
-        "Expected close to 0.00125, got {}",
-        analysis_result.worst_case_outcome.probability
+    assert_close!(
+        0.00125,
+        analysis_result.worst_case_outcome.probability,
+        1e-6
     );
-    assert!(
-        (analysis_result.worst_case_outcome.weighted_return + 0.4078).abs() < ASSERTION_TOLERANCE,
-        "Expected close to -0.4078, got {}",
-        analysis_result.worst_case_outcome.weighted_return
+    assert_close!(
+        -0.4078,
+        analysis_result.worst_case_outcome.weighted_return,
+        ASSERTION_TOLERANCE
     );
-
-    assert!(
-        (analysis_result.cumulative_probability_of_loss - 0.4425).abs() < 1e-6,
-        "Expected close to 0.4425, got {}",
-        analysis_result.cumulative_probability_of_loss
-    );
-
-    assert!(
-        (analysis_result.expected_return - 0.06656).abs() < ASSERTION_TOLERANCE,
-        "Expected close to 0.06656, got {}",
-        analysis_result.expected_return
+    assert_close!(0.4425, analysis_result.cumulative_probability_of_loss, 1e-6);
+    assert_close!(
+        0.06556,
+        analysis_result.expected_return,
+        ASSERTION_TOLERANCE
     );
 
     info!(logger, "Done.");

@@ -1,6 +1,6 @@
 use dropshot::ApiDescription;
-use portfolio::env::{create_logger, get_openapi_schema_dir};
-use portfolio::{allocate_endpoint, analyze_endpoint};
+use epictetus::env::{create_logger, get_openapi_schema_dir};
+use epictetus::{allocate_endpoint, analyze_endpoint};
 use slog::{info, Level};
 use std::fs;
 
