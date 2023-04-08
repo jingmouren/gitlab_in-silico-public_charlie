@@ -96,7 +96,7 @@ server with two client examples. See `.gitlab-ci.yml` for details.
 
 In order to update the OpenAPI schema (after introducing changes to the request/response payloads), do the following:
 - Generate the schema: `cargo run --bin generate_schema`
-- Update the HTML index: `npx @redocly/cli build-docs schema/openapi.json  -o schema/index.html`
+- Update the HTML index: `npx @redocly/cli build-docs schema/openapi.json -o schema/index.html`
 
 ### Testing
 

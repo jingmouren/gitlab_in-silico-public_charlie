@@ -311,7 +311,7 @@
     }
   },
   "info": {
-    "title": "Portfolio",
+    "title": "Epictetus",
     "version": "v0"
   },
   "openapi": "3.0.3",
@@ -385,7 +385,7 @@
             "$ref": "#/components/responses/Error"
           }
         },
-        "summary": "Analyze the porftolio by calculating useful statistics",
+        "summary": "Analyze the portfolio by calculating useful statistics",
         "tags": [
           "analyze"
         ]
