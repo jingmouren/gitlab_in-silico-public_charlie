@@ -28,13 +28,13 @@ Future improvements:
 - [x] Pass logging level to create_logger function to suppress logs in tests
 - [x] Write/find macro for assertion with tolerance
 - [x] Add a test for monitoring schema and index.html changes
+- [x] Consider adding a test for changes in index.html as well
+- [x] Improve test coverage
 - [ ] Figure out how to add basic validations to OpenAPI schema via schemars
-- [ ] Improve test coverage
 - [ ] API trait with controller and http client
 - [ ] Command line interface
 - [ ] Consider dependency injection for the Logger object that's passed around
 - [ ] Add renovate bot
-- [ ] Consider adding a test for changes in index.html as well
 
 Future features:
 - [ ] Constraint for maximum allowable risk of permanent loss of capital

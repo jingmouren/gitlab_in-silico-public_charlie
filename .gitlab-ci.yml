@@ -27,7 +27,7 @@ audit:
   stage: checks
   script:
     - cargo install cargo-audit
-    - cargo audit --ignore RUSTSEC-2020-0071  # TODO: Fix by figuring out how to update indirect dependecy version
+    - cargo audit --ignore RUSTSEC-2020-0071  # TODO: Fix by figuring out how to update indirect dependency version
 
 tests:
   stage: test
@@ -47,3 +47,4 @@ server-test:
     - sleep 10
     - cargo run --example allocate_client
     - cargo run --example analyze_client
+    - cargo run --example api_client

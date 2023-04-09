@@ -510,6 +510,13 @@ mod test {
     }
 
     #[test]
+    #[should_panic(expected = "Did not manage to find the worst case outcome in the list of outcomes:")]
+    fn test_worst_case_outcome_fails_if_there_are_no_outcomes() {
+        let logger = create_test_logger();
+        let _worst_case = worst_case_outcome(&vec![], &logger);
+    }
+
+    #[test]
     fn test_worst_case_scenario() {
         let logger = create_test_logger();
 
