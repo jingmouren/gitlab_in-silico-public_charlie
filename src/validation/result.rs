@@ -13,9 +13,9 @@ pub enum ValidationResult {
 /// Validation problem with some basic information
 #[derive(Serialize, Deserialize, JsonSchema, PartialEq, Eq, Hash, Clone, Debug)]
 pub struct Problem {
-    pub(crate) code: ValidationCode,
-    pub(crate) message: String,
-    pub(crate) severity: Severity,
+    pub code: ValidationCode,
+    pub message: String,
+    pub severity: Severity,
 }
 
 /// Validation severity

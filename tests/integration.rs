@@ -1,9 +1,10 @@
 use epictetus::allocation::{kelly_allocate, FRACTION_TOLERANCE, MAX_ITER};
 use epictetus::env::create_test_logger;
+use epictetus::model::errors::Error;
 use epictetus::model::portfolio::PortfolioCandidates;
 use epictetus::model::responses::{AllocationResponse, AnalysisResponse, TickerAndFraction};
 use epictetus::utils::assert_close;
-use epictetus::validation::result::ValidationResult;
+use epictetus::validation::result::{Problem, Severity, ValidationResult};
 use epictetus::{allocate, analyze, validate};
 use slog::info;
 
@@ -201,6 +202,124 @@ fn test_create_candidates_and_validate() {
     let logger = create_test_logger();
     let validation_errors: Vec<ValidationResult> = validate(&candidates, &logger);
     assert_eq!(validation_errors, vec![]);
+}
+
+#[test]
+fn test_allocate_with_validation_problems() {
+    // Change the probability of the first scenario from 0.05 to 0.03
+    let mut candidates: PortfolioCandidates = serde_yaml::from_str(&TEST_YAML.to_string()).unwrap();
+    candidates.companies[0].scenarios[0].probability = 0.03;
+
+    let logger = create_test_logger();
+    let allocation_response: AllocationResponse = allocate(candidates, &logger).unwrap().0;
+
+    assert!(allocation_response.error.is_none());
+    assert!(allocation_response.result.is_none());
+
+    assert_eq!(
+        allocation_response.validation_problems.unwrap(),
+        vec![ValidationResult::PROBLEM(Problem {
+            code: "probabilities-for-all-scenarios-do-not-sum-up-to-one".to_string(),
+            message: "Probabilities of all scenarios do not sum up to 1. Sum = 0.98.".to_string(),
+            severity: Severity::ERROR,
+        })],
+    );
+}
+
+#[test]
+fn test_allocate_with_no_candidates_after_filtering() {
+    // Keep only two candidates and change the numbers such that one has negative expected return
+    // and the other has no downside scenario
+    let mut candidates: PortfolioCandidates = serde_yaml::from_str(&TEST_YAML.to_string()).unwrap();
+    candidates.companies.pop();
+    candidates.companies.pop();
+    candidates.companies.pop();
+    candidates.companies.pop();
+
+    // Swap probabilities of a worst-case scenario and base case scenario such that the expected
+    // outcome is negative, for the first company
+    candidates.companies[0].scenarios[0].probability = 0.5;
+    candidates.companies[0].scenarios[2].probability = 0.05;
+
+    // Remove first two (negative outcome) scenarios for the second company, and make the third one
+    // have 100% probability
+    candidates.companies[1].scenarios.remove(0);
+    candidates.companies[1].scenarios.remove(0);
+    candidates.companies[1].scenarios[0].probability = 1.0;
+
+    // Allocate and assert that we got an error
+    let logger = create_test_logger();
+    let allocation_response: AllocationResponse = allocate(candidates, &logger).unwrap().0;
+
+    assert!(allocation_response.result.is_none());
+
+    let validation_problems = allocation_response.validation_problems.unwrap();
+    assert!(
+        validation_problems.contains(&ValidationResult::PROBLEM(Problem {
+            code: "negative-expected-return-for-a-company".to_string(),
+            message:
+                "Found negative expected return of -50.2% for A. This is not supported in the \
+                current framework because we want to prohibit shorting."
+                    .to_string(),
+            severity: Severity::WARNING,
+        }))
+    );
+    assert!(
+        validation_problems.contains(&ValidationResult::PROBLEM(Problem {
+            code: "company-with-no-downside-scenario".to_string(),
+            message:
+                "Company B doesn't have at least one downside scenario. This is not supported in \
+                the current framework because the algorithm would try and tell you to put all your \
+                money on this company."
+                    .to_string(),
+            severity: Severity::WARNING,
+        }))
+    );
+
+    assert_eq!(
+        allocation_response.error.unwrap(),
+        Error {
+            code: "no-valid-candidates-for-allocation".to_string(),
+            message: "Found no valid candidates for allocation. Check your input.".to_string(),
+        }
+    );
+}
+
+#[test]
+fn test_allocate_case_that_does_not_converge() {
+    let mut candidates: PortfolioCandidates = serde_yaml::from_str(&TEST_YAML.to_string()).unwrap();
+
+    // Remove first scenario such that we're left with only two of them
+    candidates.companies[5].scenarios.remove(0);
+
+    // Make the first scenario very unlikely with extremely small downside
+    candidates.companies[5].scenarios[0].probability = 1e-3;
+    candidates.companies[5].scenarios[0].intrinsic_value =
+        0.99 * candidates.companies[5].market_cap;
+
+    // Make the second scenario very likely with extremely large upside
+    candidates.companies[5].scenarios[1].probability = 1.0 - 1e-3;
+    candidates.companies[5].scenarios[1].intrinsic_value =
+        100.0 * candidates.companies[5].market_cap;
+
+    let logger = create_test_logger();
+    let allocation_response: AllocationResponse = allocate(candidates, &logger).unwrap().0;
+    println!("{:?}", allocation_response);
+
+    assert_eq!(allocation_response.validation_problems.unwrap(), vec![]);
+    assert!(allocation_response.result.is_none());
+
+    assert_eq!(
+        allocation_response.error.unwrap(),
+        Error {
+            code: "nonlinear-loop-didnt-converge".to_string(),
+            message:
+                "Did not manage to find the numerical solution. This may happen if the input data \
+                would suggest a very strong bias towards a single/few investments. Check your \
+                input."
+                    .to_string(),
+        },
+    );
 }
 
 #[test]

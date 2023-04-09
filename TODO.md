@@ -30,6 +30,8 @@ Future improvements:
 - [x] Add a test for monitoring schema and index.html changes
 - [x] Consider adding a test for changes in index.html as well
 - [x] Improve test coverage
+- [ ] Create config file for server config
+- [ ] Build docker image and push to gitlab registry
 - [ ] Figure out how to add basic validations to OpenAPI schema via schemars
 - [ ] API trait with controller and http client
 - [ ] Command line interface

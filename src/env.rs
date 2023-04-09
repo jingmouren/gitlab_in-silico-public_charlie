@@ -46,6 +46,9 @@ mod test {
         // Note: Assert only that the last portion of the path is "schema" directory because when
         // running in tests, the path is essentially ./target/schema instead of ./schema, which
         // is expected and something that needs to be improved (see "TODO" in the function)
-        assert_eq!(get_openapi_schema_dir().as_path().file_name().unwrap(), "schema")
+        assert_eq!(
+            get_openapi_schema_dir().as_path().file_name().unwrap(),
+            "schema"
+        )
     }
 }

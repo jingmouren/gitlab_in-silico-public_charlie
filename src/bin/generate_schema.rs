@@ -49,14 +49,30 @@ fn generate_schema(logger: &Logger) -> Value {
 
 /// Generate index.html from the schema, by calling npx as a subprocess
 fn generate_index(logger: &Logger) {
-    info!(logger, "Generating index from schema in schema/openapi.json");
+    info!(
+        logger,
+        "Generating index from schema in schema/openapi.json"
+    );
     let mut generate_index_command = Command::new("npx");
-    generate_index_command.args(vec!["@redocly/cli", "build-docs", "schema/openapi.json", "-o", "schema/index.html"]);
+    generate_index_command.args(vec![
+        "@redocly/cli",
+        "build-docs",
+        "schema/openapi.json",
+        "-o",
+        "schema/index.html",
+    ]);
 
-    info!(logger, "Running npx command to generate index: {:?}", generate_index_command);
+    info!(
+        logger,
+        "Running npx command to generate index: {:?}", generate_index_command
+    );
     let output = generate_index_command.output().unwrap();
 
-    info!(logger, "Output of the npx command: {}", from_utf8(&output.stdout).unwrap());
+    info!(
+        logger,
+        "Output of the npx command: {}",
+        from_utf8(&output.stdout).unwrap()
+    );
 }
 
 #[cfg(test)]

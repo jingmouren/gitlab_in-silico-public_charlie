@@ -33,6 +33,8 @@ tests:
   stage: test
   script:
     - cargo test
+    # Note: Increase timeout to 120 seconds (default is 60 seconds) because one integration test is long since it fails
+    # to converge in 1000 iterations
     # TODO: Fix issue with ted (gitlab runner) by modifying its config. See here for more details
     #  https://github.com/xd009642/tarpaulin/issues/146#issuecomment-554302029
     # - cargo install cargo-tarpaulin
