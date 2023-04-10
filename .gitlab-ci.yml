@@ -47,6 +47,6 @@ server-test:
     - cargo build --release
     - nohup cargo run --release --bin run_server &
     - sleep 10
-    - cargo run --example allocate_client
-    - cargo run --example analyze_client
-    - cargo run --example api_client
+    - cargo run --release --example allocate_client
+    - cargo run --release --example analyze_client
+    - cargo run --release --example api_client
