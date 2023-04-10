@@ -36,8 +36,6 @@ fn main() {
         .join("index.html");
 
     let reference_index = fs::read_to_string(reference_index_file_path).unwrap();
-    println!("{}", json_schema_index);
-    println!("{}", reference_index);
     assert_eq!(json_schema_index, reference_index);
 
     info!(logger, "Done.");
