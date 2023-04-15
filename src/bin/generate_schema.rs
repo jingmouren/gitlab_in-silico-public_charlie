@@ -1,6 +1,6 @@
 use dropshot::ApiDescription;
-use epictetus::env::{create_logger, get_openapi_schema_dir};
-use epictetus::{allocate_endpoint, analyze_endpoint};
+use charlie::env::{create_logger, get_openapi_schema_dir};
+use charlie::{allocate_endpoint, analyze_endpoint};
 use serde_json::Value;
 use slog::{info, Level, Logger};
 use std::fs;
@@ -78,7 +78,7 @@ fn generate_index(logger: &Logger) {
 #[cfg(test)]
 mod test {
     use crate::generate_schema;
-    use epictetus::env::create_test_logger;
+    use charlie::env::create_test_logger;
     use serde_json::Value;
     use std::fs;
 

@@ -1,8 +1,8 @@
-use epictetus::allocation::FRACTION_TOLERANCE;
-use epictetus::env::create_logger;
-use epictetus::model::portfolio::Portfolio;
-use epictetus::model::responses::AnalysisResponse;
-use epictetus::utils::assert_close;
+use charlie::allocation::FRACTION_TOLERANCE;
+use charlie::env::create_logger;
+use charlie::model::portfolio::Portfolio;
+use charlie::model::responses::AnalysisResponse;
+use charlie::utils::assert_close;
 use reqwest::StatusCode;
 use slog::{info, Level};
 

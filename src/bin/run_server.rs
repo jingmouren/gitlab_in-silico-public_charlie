@@ -3,7 +3,7 @@ use dropshot::{
     ApiDescription, ConfigDropshot, ConfigLogging, ConfigLoggingIfExists, ConfigLoggingLevel,
     HttpServerStarter,
 };
-use epictetus::{allocate_endpoint, analyze_endpoint, openapi};
+use charlie::{allocate_endpoint, analyze_endpoint, openapi};
 use slog::info;
 use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
 
@@ -19,7 +19,7 @@ async fn main() -> Result<(), String> {
     // An "info"-level logger that writes to stderr assuming that it's a terminal.
     let config_logging = ConfigLogging::File {
         level: ConfigLoggingLevel::Info,
-        path: Utf8PathBuf::from("./portfolio.log"),
+        path: Utf8PathBuf::from("./server.log"),
         if_exists: ConfigLoggingIfExists::Append,
     };
     let log = config_logging

@@ -1,4 +1,4 @@
-use epictetus::env::create_logger;
+use charlie::env::create_logger;
 use reqwest::StatusCode;
 use slog::{info, Level};
 use std::fs;

@@ -1,11 +1,11 @@
-use epictetus::allocation::{kelly_allocate, FRACTION_TOLERANCE, MAX_ITER};
-use epictetus::env::create_test_logger;
-use epictetus::model::errors::Error;
-use epictetus::model::portfolio::PortfolioCandidates;
-use epictetus::model::responses::{AllocationResponse, AnalysisResponse, TickerAndFraction};
-use epictetus::utils::assert_close;
-use epictetus::validation::result::{Problem, Severity, ValidationResult};
-use epictetus::{allocate, analyze, validate};
+use charlie::allocation::{kelly_allocate, FRACTION_TOLERANCE, MAX_ITER};
+use charlie::env::create_test_logger;
+use charlie::model::errors::Error;
+use charlie::model::portfolio::PortfolioCandidates;
+use charlie::model::responses::{AllocationResponse, AnalysisResponse, TickerAndFraction};
+use charlie::utils::assert_close;
+use charlie::validation::result::{Problem, Severity, ValidationResult};
+use charlie::{allocate, analyze, validate};
 use slog::info;
 
 /// Make assertion tolerance the same as the fraction tolerance (no point in more accuracy)

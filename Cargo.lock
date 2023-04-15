@@ -131,6 +131,29 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 
 [[package]]
+name = "charlie"
+version = "0.1.0"
+dependencies = [
+ "camino",
+ "dropshot",
+ "http",
+ "hyper",
+ "itertools",
+ "nalgebra",
+ "num-traits",
+ "ordered-float",
+ "reqwest",
+ "schemars",
+ "serde",
+ "serde_json",
+ "serde_yaml",
+ "slog",
+ "slog-async",
+ "slog-term",
+ "tokio",
+]
+
+[[package]]
 name = "chrono"
 version = "0.4.24"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -358,29 +381,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "071a31f4ee85403370b58aca746f01041ede6f0da2730960ad001edc2b71b394"
 dependencies = [
  "cfg-if",
-]
-
-[[package]]
-name = "epictetus"
-version = "0.1.0"
-dependencies = [
- "camino",
- "dropshot",
- "http",
- "hyper",
- "itertools",
- "nalgebra",
- "num-traits",
- "ordered-float",
- "reqwest",
- "schemars",
- "serde",
- "serde_json",
- "serde_yaml",
- "slog",
- "slog-async",
- "slog-term",
- "tokio",
 ]
 
 [[package]]
