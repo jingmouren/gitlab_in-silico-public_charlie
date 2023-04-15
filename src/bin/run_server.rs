@@ -1,9 +1,9 @@
 use camino::Utf8PathBuf;
+use charlie::{allocate_endpoint, analyze_endpoint, openapi};
 use dropshot::{
     ApiDescription, ConfigDropshot, ConfigLogging, ConfigLoggingIfExists, ConfigLoggingLevel,
     HttpServerStarter,
 };
-use charlie::{allocate_endpoint, analyze_endpoint, openapi};
 use slog::info;
 use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
 

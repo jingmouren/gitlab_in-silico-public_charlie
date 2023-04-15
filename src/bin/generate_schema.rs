@@ -1,6 +1,6 @@
-use dropshot::ApiDescription;
 use charlie::env::{create_logger, get_openapi_schema_dir};
 use charlie::{allocate_endpoint, analyze_endpoint};
+use dropshot::ApiDescription;
 use serde_json::Value;
 use slog::{info, Level, Logger};
 use std::fs;
