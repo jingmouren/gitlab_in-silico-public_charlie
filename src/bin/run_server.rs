@@ -1,29 +1,35 @@
 use camino::Utf8PathBuf;
+use charlie::env::get_project_dir;
 use charlie::{allocate_endpoint, analyze_endpoint, openapi};
 use dropshot::{
     ApiDescription, ConfigDropshot, ConfigLogging, ConfigLoggingIfExists, ConfigLoggingLevel,
     HttpServerStarter,
 };
 use slog::info;
-use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
+use std::fs;
 
 #[tokio::main]
 async fn main() -> Result<(), String> {
-    // Local host (127.0.0.1) with port 8000 (fixing port number for reproducibility in tests)
-    let config_dropshot = ConfigDropshot {
-        bind_address: SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), 8000)),
-        request_body_max_bytes: 4096,
-        tls: None,
-    };
+    // Read file containing the server config
+    let server_config_file_path = get_project_dir().join("server_config.toml");
+    let server_config_str =
+        fs::read_to_string(server_config_file_path.clone()).unwrap_or_else(|_| {
+            panic!(
+                "Did not manage to read server config file at: {:?}",
+                server_config_file_path
+            )
+        });
+    let server_config: ConfigDropshot =
+        toml::from_str(&server_config_str).expect("Failed to deserialize server config.");
 
-    // An "info"-level logger that writes to stderr assuming that it's a terminal.
+    // An info-level logger to a file
     let config_logging = ConfigLogging::File {
         level: ConfigLoggingLevel::Info,
         path: Utf8PathBuf::from("./server.log"),
         if_exists: ConfigLoggingIfExists::Append,
     };
     let log = config_logging
-        .to_logger("portfolio")
+        .to_logger("charlie")
         .map_err(|error| format!("failed to create logger: {}", error))?;
 
     // Create an API description object and register the endpoints
@@ -35,7 +41,7 @@ async fn main() -> Result<(), String> {
 
     // Set up the server.
     info!(log, "Setting up the server.");
-    let server = HttpServerStarter::new(&config_dropshot, api, (), &log)
+    let server = HttpServerStarter::new(&server_config, api, (), &log)
         .map_err(|error| format!("failed to create server: {}", error))?
         .start();
 

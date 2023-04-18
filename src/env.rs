@@ -21,34 +21,34 @@ pub fn create_test_logger() -> Logger {
     create_logger(Level::Warning)
 }
 
-/// Gets schema directory which is in PROJECT_DIR/schema/openapi_schema.json
-/// Assumes that the executable calling this function is in PROJECT_DIR/src/bin
-/// TODO: Make this independent of the current file for nicer testability
-pub fn get_openapi_schema_dir() -> PathBuf {
+/// Gets the project directory by looking for directory where Cargo.toml is located, starting from
+/// the directory that contains the current executable file.
+pub fn get_project_dir() -> PathBuf {
     let this_file_path =
         std::env::current_exe().expect("Can't get path of the current executable.");
-    let project_root_dir = this_file_path
+
+    let mut project_dir = this_file_path
         .parent()
-        .expect("Can't get first parent of this file.")
-        .parent()
-        .expect("Can't get second parent of this file.")
-        .parent()
-        .expect("Can't get third parent of this file");
-    project_root_dir.join("schema")
+        .expect("Can't get first parent of the executable.");
+    loop {
+        if project_dir.is_dir() && project_dir.join("Cargo.toml").exists() {
+            break;
+        } else {
+            project_dir = project_dir
+                .parent()
+                .expect("Couldn't find parent of directory.")
+        }
+    }
+
+    project_dir.to_path_buf()
 }
 
 #[cfg(test)]
 mod test {
-    use crate::env::get_openapi_schema_dir;
+    use crate::env::get_project_dir;
 
     #[test]
-    fn test_get_openapi_schema_dir() {
-        // Note: Assert only that the last portion of the path is "schema" directory because when
-        // running in tests, the path is essentially ./target/schema instead of ./schema, which
-        // is expected and something that needs to be improved (see "TODO" in the function)
-        assert_eq!(
-            get_openapi_schema_dir().as_path().file_name().unwrap(),
-            "schema"
-        )
+    fn test_get_project_dir() {
+        assert!(get_project_dir().join("Cargo.toml").exists());
     }
 }

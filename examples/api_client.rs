@@ -1,4 +1,4 @@
-use charlie::env::create_logger;
+use charlie::env::{create_logger, get_project_dir};
 use reqwest::StatusCode;
 use slog::{info, Level};
 use std::fs;
@@ -20,20 +20,9 @@ fn main() {
         logger,
         "Asserting that the served index.html is the same as the one in schema dir."
     );
+
     // Load reference index.html
-    let this_file_path =
-        std::env::current_exe().expect("Can't get path of the current executable.");
-    let reference_index_file_path = this_file_path
-        .parent()
-        .unwrap()
-        .parent()
-        .unwrap()
-        .parent()
-        .unwrap()
-        .parent()
-        .unwrap()
-        .join("schema")
-        .join("index.html");
+    let reference_index_file_path = get_project_dir().join("schema").join("index.html");
 
     let reference_index = fs::read_to_string(reference_index_file_path).unwrap();
     assert_eq!(json_schema_index, reference_index);

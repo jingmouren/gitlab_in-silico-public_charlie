@@ -1,4 +1,4 @@
-use charlie::env::{create_logger, get_openapi_schema_dir};
+use charlie::env::{create_logger, get_project_dir};
 use charlie::{allocate_endpoint, analyze_endpoint};
 use dropshot::ApiDescription;
 use serde_json::Value;
@@ -10,7 +10,7 @@ use std::str::from_utf8;
 fn main() {
     let logger = create_logger(Level::Info);
 
-    let schema_file_path = get_openapi_schema_dir().join("openapi.json");
+    let schema_file_path = get_project_dir().join("schema").join("openapi.json");
     info!(
         logger,
         "Will write OpenAPI schema to {:?}", schema_file_path
@@ -42,7 +42,7 @@ fn generate_schema(logger: &Logger) -> Value {
     api.register(analyze_endpoint).unwrap();
 
     info!(logger, "Generating OpenAPI JSON schema.");
-    api.openapi("Epictetus", "v0")
+    api.openapi("Charlie", "v0")
         .json()
         .expect("Failed to convert OpenAPIDefinition to JSON.")
 }
@@ -78,7 +78,7 @@ fn generate_index(logger: &Logger) {
 #[cfg(test)]
 mod test {
     use crate::generate_schema;
-    use charlie::env::create_test_logger;
+    use charlie::env::{create_test_logger, get_project_dir};
     use serde_json::Value;
     use std::fs;
 
@@ -92,20 +92,7 @@ mod test {
         let json_schema = generate_schema(&logger);
 
         // Load reference schema
-        let this_file_path =
-            std::env::current_exe().expect("Can't get path of the current executable.");
-        let schema_file_path = this_file_path
-            .parent()
-            .unwrap()
-            .parent()
-            .unwrap()
-            .parent()
-            .unwrap()
-            .parent()
-            .unwrap()
-            .join("schema")
-            .join("openapi.json");
-
+        let schema_file_path = get_project_dir().join("schema").join("openapi.json");
         let reference_schema_str = fs::read_to_string(schema_file_path).unwrap();
         let reference_schema: Value = serde_json::from_str(reference_schema_str.as_str()).unwrap();
 

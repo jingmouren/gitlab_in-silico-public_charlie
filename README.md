@@ -3,17 +3,17 @@
 The software is named after Charlie Munger, and is here to help you out in portfolio allocation for a focused, value
 investing approach.
 
-Charlie would remind you that you should spend the majority of your time analyzing investments and thinking about
-intrinsic values and different scenarios that might play out, independently of outside thoughts and events. The tool
-will also make you think about unpredictable external events. In fact, it won't help you if you're analyzing a company
+The underlying philosophy is that you should spend the majority of your time analyzing investments and thinking about
+intrinsic values and different scenarios that might play out, independently of outside thoughts and events. The software
+will force you to think about unpredictable external events. In fact, it won't help you if you're analyzing a company
 for which you cannot think of at least one downside scenario.
 
-Note that **the tool can give you advice, but it cannot give you conduct**. If you find yourself using this tool very
-often by changing inputs to match your preconceived expectations, then you're probably on the wrong path.
+Note that **the software can give you advice, but it cannot give you conduct**. If you find yourself using this tool
+very often by changing inputs to match your preconceived expectations, then you're probably on the wrong path.
 
 ### How should you work with this tool?
 
-You should use this tool in the following way:
+You should use this software in the following way:
 - You spend 99.99% of your time thinking about companies that you'd like to invest in, and providing different scenarios
   for each company. A scenario is described by your estimate of the intrinsic value and the probability that this
   intrinsic value will be realized at some (undefined) point in the future.
@@ -100,7 +100,8 @@ server with two client examples. See `.gitlab-ci.yml` for details.
 
 In order to update the OpenAPI schema (after introducing changes to the request/response payloads), do the following:
 - Generate the schema: `cargo run --bin generate_schema`
-- Update the HTML index: `npx @redocly/cli build-docs schema/openapi.json -o schema/index.html`
+
+After generating the JSON schema, the application also calls `npx` to generate new index.html based on the schema. 
 
 ### Testing
 
