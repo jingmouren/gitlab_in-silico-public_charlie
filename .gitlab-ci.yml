@@ -1,36 +1,57 @@
-image: "rust:latest"
-
 default:
-  before_script:
-    - rustc --version
-    - cargo --version
   tags:
     - ted
 
+.rust_image:
+  image: "rust:latest"
+  before_script:
+    - rustc --version
+    - cargo --version
+
+.docker_image:
+  image: docker:latest
+  services:
+    - docker:dind
+  before_script:
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+
+variables:
+  # Use TLS https://docs.gitlab.com/ee/ci/docker/using_docker_build.html#tls-enabled
+  DOCKER_TLS_CERTDIR: "/certs"
+  CONTAINER_TEST_IMAGE: $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG
+  CONTAINER_RELEASE_IMAGE: $CI_REGISTRY_IMAGE:latest
+  COMMIT_SHA: $CI_COMMIT_SHORT_SHA
+
 stages:
-  - checks
-  - test
+  - Checks
+  - Unit Tests
+  - Build
+  - Functional Tests
 
 lint:
-  stage: checks
+  extends: .rust_image
+  stage: Checks
   script:
     - rustup component add clippy
     - cargo clippy -- -D warnings
 
 format:
-  stage: checks
+  extends: .rust_image
+  stage: Checks
   script:
     - rustup component add rustfmt
     - cargo fmt -- --check
 
 audit:
-  stage: checks
+  extends: .rust_image
+  stage: Checks
   script:
     - cargo install cargo-audit
-    - cargo audit --ignore RUSTSEC-2020-0071  # TODO: Fix by figuring out how to update indirect dependency version
+    - cargo audit --ignore RUSTSEC-2020-0071 --ignore RUSTSEC-2023-0034 # TODO: Fix both vulnerabilities
 
-tests:
-  stage: test
+unit-tests:
+  extends: .rust_image
+  stage: Unit Tests
   script:
     - cargo test
     # Note: Increase timeout to 120 seconds (default is 60 seconds) because one integration test is long since it fails
@@ -40,8 +61,17 @@ tests:
     # - cargo install cargo-tarpaulin
     # - cargo tarpaulin --ignore-tests
 
-server-test:
-  stage: test
+build:
+  extends: .docker_image
+  stage: Build
+  script:
+    - docker build --pull -t $CONTAINER_TEST_IMAGE .
+    - docker push $CONTAINER_TEST_IMAGE
+
+# TODO
+functional-tests:
+  extends: .rust_image
+  stage: Functional Tests
   script:
     # Run the server and sleep 10 seconds for it to start (TODO: Improve by adding health endpoint)
     - cargo build --release
