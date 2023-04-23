@@ -1,36 +1,58 @@
-image: "rust:latest"
-
 default:
-  before_script:
-    - rustc --version
-    - cargo --version
   tags:
     - ted
 
+.rust_image:
+  image: "rust:latest"
+  before_script:
+    - rustc --version
+    - cargo --version
+
+.docker_image:
+  image: docker:latest
+  services:
+    - docker:dind
+  before_script:
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+
+variables:
+  # Use TLS https://docs.gitlab.com/ee/ci/docker/using_docker_build.html#tls-enabled
+  DOCKER_TLS_CERTDIR: "/certs"
+  IMAGE: $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG
+  RELEASE_IMAGE: $CI_REGISTRY_IMAGE:latest
+  COMMIT_SHA: $CI_COMMIT_SHORT_SHA
+
 stages:
-  - checks
-  - test
+  - Checks
+  - Unit Tests
+  - Build
+  - Functional Tests
+  - Release
 
 lint:
-  stage: checks
+  extends: .rust_image
+  stage: Checks
   script:
     - rustup component add clippy
     - cargo clippy -- -D warnings
 
 format:
-  stage: checks
+  extends: .rust_image
+  stage: Checks
   script:
     - rustup component add rustfmt
     - cargo fmt -- --check
 
 audit:
-  stage: checks
+  extends: .rust_image
+  stage: Checks
   script:
     - cargo install cargo-audit
-    - cargo audit --ignore RUSTSEC-2020-0071  # TODO: Fix by figuring out how to update indirect dependency version
+    - cargo audit --ignore RUSTSEC-2020-0071 --ignore RUSTSEC-2023-0034 # TODO: Fix both vulnerabilities
 
-tests:
-  stage: test
+unit-tests:
+  extends: .rust_image
+  stage: Unit Tests
   script:
     - cargo test
     # Note: Increase timeout to 120 seconds (default is 60 seconds) because one integration test is long since it fails
@@ -40,13 +62,36 @@ tests:
     # - cargo install cargo-tarpaulin
     # - cargo tarpaulin --ignore-tests
 
-server-test:
-  stage: test
+build:
+  extends: .docker_image
+  stage: Build
   script:
-    # Run the server and sleep 10 seconds for it to start (TODO: Improve by adding health endpoint)
-    - cargo build --release
-    - nohup cargo run --release --bin run_server &
+    - docker build --pull -t $IMAGE .
+    - docker push $IMAGE
+
+functional-tests:
+  extends: .docker_image
+  stage: Functional Tests
+  variables:
+    TEST_CONTAINER_NAME: test_server
+  script:
+    # Run the server in container and sleep 10 seconds for it to start (TODO: Improve by adding health endpoint)
+    - docker pull $IMAGE
+    - nohup docker run --name=$TEST_CONTAINER_NAME --network="host" $IMAGE &
     - sleep 10
-    - cargo run --release --example allocate_client
-    - cargo run --release --example analyze_client
-    - cargo run --release --example api_client
+    # Run example clients
+    - docker run --network="host" $IMAGE /bin/bash -c "allocate_client"
+    - docker run --network="host" $IMAGE /bin/bash -c "analyze_client"
+    - docker run --network="host" $IMAGE /bin/bash -c "api_client"
+    # Clean-up
+    - docker container kill $TEST_CONTAINER_NAME
+    - docker container rm $TEST_CONTAINER_NAME
+
+release-image:
+  stage: Release
+  script:
+    - docker pull $IMAGE
+    - docker tag $IMAGE $RELEASE_IMAGE
+    - docker push $RELEASE_IMAGE
+  only:
+    - master
