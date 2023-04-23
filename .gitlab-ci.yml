@@ -27,6 +27,7 @@ stages:
   - Unit Tests
   - Build
   - Functional Tests
+  - Release
 
 lint:
   extends: .rust_image
@@ -83,5 +84,13 @@ functional-tests:
     - docker run --network="host" $IMAGE /bin/bash -c "analyze_client"
     - docker run --network="host" $IMAGE /bin/bash -c "api_client"
     # Clean-up
-    - docker container kill $TEST_CONTAINER_NAME
     - docker container rm $TEST_CONTAINER_NAME
+
+release-image:
+  stage: Release
+  script:
+    - docker pull $IMAGE
+    - docker tag $IMAGE $RELEASE_IMAGE
+    - docker push $RELEASE_IMAGE
+  only:
+    - master

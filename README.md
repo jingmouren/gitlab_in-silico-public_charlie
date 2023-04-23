@@ -91,10 +91,12 @@ Project structure follows the recommended practices for `rust` projects:
     - `cargo run --example allocate_client`
     - `cargo run --example analyze_client`
 
+Server can also be run within a Docker container: `docker run --network="host" -v ${pwd}:/usr/src/charlie registry.gitlab.com/in-silico-team/charlie:latest`
+
 ## Continuous Integration
 
-The CI pipeline consists of format check, linter check, security check, unit and integration tests, and running the
-server with two client examples. See `.gitlab-ci.yml` for details.
+The CI pipeline consists of format check, linter check, security check, unit and integration tests, docker build and
+running the server with two client examples inside Docker containers. See `.gitlab-ci.yml` for details.
 
 ### OpenAPI schema update
 
