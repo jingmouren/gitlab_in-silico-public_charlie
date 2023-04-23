@@ -84,6 +84,7 @@ functional-tests:
     - docker run --network="host" $IMAGE /bin/bash -c "analyze_client"
     - docker run --network="host" $IMAGE /bin/bash -c "api_client"
     # Clean-up
+    - docker container kill $TEST_CONTAINER_NAME
     - docker container rm $TEST_CONTAINER_NAME
 
 release-image:
