@@ -1,2 +1,2 @@
-bind_address = "127.0.0.1:8000"
+bind_address = "127.0.0.1:8000"  # Configuration for running inside a Docker container
 request_body_max_bytes = 4096

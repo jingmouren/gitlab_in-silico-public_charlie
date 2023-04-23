@@ -18,8 +18,8 @@ default:
 variables:
   # Use TLS https://docs.gitlab.com/ee/ci/docker/using_docker_build.html#tls-enabled
   DOCKER_TLS_CERTDIR: "/certs"
-  CONTAINER_TEST_IMAGE: $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG
-  CONTAINER_RELEASE_IMAGE: $CI_REGISTRY_IMAGE:latest
+  IMAGE: $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG
+  RELEASE_IMAGE: $CI_REGISTRY_IMAGE:latest
   COMMIT_SHA: $CI_COMMIT_SHORT_SHA
 
 stages:
@@ -65,18 +65,23 @@ build:
   extends: .docker_image
   stage: Build
   script:
-    - docker build --pull -t $CONTAINER_TEST_IMAGE .
-    - docker push $CONTAINER_TEST_IMAGE
+    - docker build --pull -t $IMAGE .
+    - docker push $IMAGE
 
-# TODO
 functional-tests:
-  extends: .rust_image
+  extends: .docker_image
   stage: Functional Tests
+  variables:
+    TEST_CONTAINER_NAME: test_server
   script:
-    # Run the server and sleep 10 seconds for it to start (TODO: Improve by adding health endpoint)
-    - cargo build --release
-    - nohup cargo run --release --bin run_server &
+    # Run the server in container and sleep 10 seconds for it to start (TODO: Improve by adding health endpoint)
+    - docker pull $IMAGE
+    - nohup docker run --name=$TEST_CONTAINER_NAME --network="host" $IMAGE &
     - sleep 10
-    - cargo run --release --example allocate_client
-    - cargo run --release --example analyze_client
-    - cargo run --release --example api_client
+    # Run example clients
+    - docker run --network="host" $IMAGE /bin/bash -c "allocate_client"
+    - docker run --network="host" $IMAGE /bin/bash -c "analyze_client"
+    - docker run --network="host" $IMAGE /bin/bash -c "api_client"
+    # Clean-up
+    - docker container kill $TEST_CONTAINER_NAME
+    - docker container rm $TEST_CONTAINER_NAME
