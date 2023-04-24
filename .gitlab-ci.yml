@@ -88,6 +88,7 @@ functional-tests:
     - docker container rm $TEST_CONTAINER_NAME
 
 release-image:
+  extends: .docker_image
   stage: Release
   script:
     - docker pull $IMAGE
