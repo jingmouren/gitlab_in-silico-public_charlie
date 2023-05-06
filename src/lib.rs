@@ -30,6 +30,27 @@ use std::fs;
 
 /// OpenAPI documentation
 #[endpoint {
+method = GET,
+path = "/demo",
+tags = [ "demo" ]
+}]
+pub async fn demo(_rqctx: RequestContext<()>) -> Result<Response<Body>, HttpError> {
+    let demo_file_path = get_project_dir().join("demo").join("demo.html");
+    let demo = fs::read_to_string(demo_file_path.clone()).unwrap_or_else(|_| {
+        panic!(
+            "Did not manage to read demo.html file at: {:?}",
+            demo_file_path
+        )
+    });
+
+    Ok(Response::builder()
+        .status(StatusCode::OK)
+        .header(http::header::CONTENT_TYPE, "text/html")
+        .body(demo.into())?)
+}
+
+/// OpenAPI documentation
+#[endpoint {
     method = GET,
     path = "/api",
     tags = [ "api" ]

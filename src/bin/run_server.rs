@@ -1,6 +1,6 @@
 use camino::Utf8PathBuf;
 use charlie::env::get_project_dir;
-use charlie::{allocate_endpoint, analyze_endpoint, openapi};
+use charlie::{allocate_endpoint, analyze_endpoint, demo, openapi};
 use dropshot::{
     ApiDescription, ConfigDropshot, ConfigLogging, ConfigLoggingIfExists, ConfigLoggingLevel,
     HttpServerStarter,
@@ -38,6 +38,7 @@ async fn main() -> Result<(), String> {
     api.register(openapi).unwrap();
     api.register(allocate_endpoint).unwrap();
     api.register(analyze_endpoint).unwrap();
+    api.register(demo).unwrap();
 
     // Set up the server.
     info!(log, "Setting up the server.");

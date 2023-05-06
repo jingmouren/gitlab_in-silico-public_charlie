@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+	<head>
+	</head>
+	<body>
+		<textarea id="inputJson"></textarea>
+		<button onclick="allocate()">Allocate</button>
+		<textarea id="outputJson"></textarea>
+		<script>
+			function allocate() {
+				let internalEndpoint = 'http://localhost:8000/allocate'
+				let inputJson = document.getElementById('inputJson').value
+
+				fetch(internalEndpoint, {
+					method: 'POST',
+					headers: {
+						'dataType': 'json',
+						'content-type': 'application/json'
+					},
+					body: inputJson
+				})
+				.then(response => response.text()) // check whether response.text() should be used instead
+				.then(data => document.getElementById('outputJson').value = data)
+				.catch(error => console.error('Encountered error:', error))
+			}
+		</script>
+	</body>
+</html>
