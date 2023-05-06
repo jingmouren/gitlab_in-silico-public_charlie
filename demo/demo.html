@@ -19,8 +19,8 @@
 					},
 					body: inputJson
 				})
-				.then(response => response.text()) // check whether response.text() should be used instead
-				.then(data => document.getElementById('outputJson').value = data)
+				.then(response => response.text())
+				.then(data => document.getElementById('outputJson').value = JSON.stringify(JSON.parse(data), null, 4))
 				.catch(error => console.error('Encountered error:', error))
 			}
 		</script>
