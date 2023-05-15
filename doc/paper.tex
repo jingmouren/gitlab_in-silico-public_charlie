@@ -1,0 +1,431 @@
+\documentclass{article}
+
+\usepackage{amssymb}
+\usepackage{amsmath}
+\usepackage{hyperref}
+\usepackage[mathscr]{eucal}
+\usepackage{authblk}
+
+\title{Sizing the bets in a focused portfolio}
+%\title{Capital allocation for a focused portfolio based on fundamental analysis}
+
+\author[$\dagger$]{Vuko Vuk\v{c}evi\'{c}}
+
+\affil[$\dagger$]{In silico Ltd., Zagreb, Croatia, vuko.vukcevic@insilico.hr}
+%\affil[$\star$]{SimScale GmbH, Munich, Germany, vvukcevic@simscale.com}
+
+\begin{document}
+
+\maketitle
+
+\section{Summary}
+\label{sec:summary}
+
+This paper consist of two parts, one without the mathematics and one with the
+mathematics. For a non--mathematical reader, it is best to skip the two sections
+related to mathematics and numerics, namely~\autoref{sec:mathematics}
+and~\autoref{sec:numerics}. The reader who is interested in mathematics should
+still read the preceding sections since they provide context within which the
+mathematics is built on.
+
+\section{Motivation}
+\label{sec:motivation}
+
+Before going on to explain the motivation about this work, a bit of context
+might come useful. In silico is an employee--owned engineering consultancy
+company that invests its excess cash into publicly traded stocks. The excess
+cash comes sporadically, and In silico has been a net buyer over the last four
+years: A trend that will likely continue. When the excess cash comes in, the
+following question arises: How much money to put in which stocks? That question
+had been answered by looking at our fundamental analysis for each company, and
+performing some vague hand calculations. That of course works well because of
+all the other uncertainties in the investment process, but the motivation was
+to:
+\begin{enumerate}
+    \item Improve the odds of us behaving rationally (i.e. minimize
+    psychological misjudgments such as anchoring bias~\cite{kahneman},
+    consistency and commitment tendency~\cite{cialdini}, and
+    others with their combined effects~\cite{almanack}),
+    \item Save time (i.e. avoid doing hand calculations).
+\end{enumerate}
+
+Since mathematics is usually good at keeping people rational, and software is
+great for saving time, a decision has been made to write a software that answers
+the following question: For a set of candidate companies and their current
+market capitalization, each having a set of scenarios defined by a probability
+and intrinsic value estimate, how much of our capital to invest in each?
+
+\section{Introduction}
+\label{sec:introduction}
+
+The answer to this question has been given by Kelly with his widely known Kelly
+formula (sometimes called Kelly criterion)~\cite{kelly}. The Kelly's approach
+starts by maximizing long--term growth of capital when one is presented with
+infinite amount of opportunities to bet. This work extends that idea by
+considering:
+\begin{enumerate}
+    \item Multiple companies (stocks) in parallel,
+    \item An arbitrary number of scenarios for each company,
+    \item A fundamentals--based analysis (after all, a stock is an ownership
+    share of business~\cite{intelligentInvestor}.
+\end{enumerate}
+
+The generalization leads to a non--linear system of equations that when solved,
+yields a fraction of capital to invest in each of the candidate companies. The
+mathematical derivation is presented in \autoref{sec:mathematics}, while in the
+next two subsections (\autoref{sec:assumptions} and \autoref{sec:safetyMargin}),
+a discussion on assumptions in a non--mathematical way, and the margin of
+safety, are presented.
+
+\subsection{Disclaimers and Assumptions}
+\label{sec:assumptions}
+
+The underlying philosophy is that one should spend the majority of his time
+analyzing investments and thinking about intrinsic values under different
+scenarios that might play out, independently of outside thoughts and events.
+However, calculating intrinsic value of a company is more of an art than a
+science, especially for a high-quality, growing businesses within one's circle
+of competence. And according to Charlie Munger, Warren Buffett, Mohnish Pabrai
+and the like-minded others from whom the author got the inspiration for this
+work, one should focus precisely on getting such great businesses for a fair
+price. That means that one shouldn't take what this approach says at face value,
+and one should probably use its guidance infrequently.
+
+During the mathematical derivation presented in \autoref{sec:mathematics}, an
+assumption is made that the number of bets is very high (tends to infinity).
+This work does not try to justify this assumption in a strong mathematical
+form~\footnote{It is on the author's TODO list to try and prove this.}. Here's a
+soft, non-mathematical reasoning on why your author thinks this is fine: The
+assumption is made in order to write the equations in terms of probabilities
+instead of the number of outcomes divided by the number of bets. Therefore, as
+long as the input probabilities are \textit{conservatively} estimated, the
+framework should still be valid. This essentially represents the most important
+margin of safety~\cite{intelligentInvestor}.
+
+\subsection{Margin of Safety}
+\label{sec:safetyMargin}
+
+In addition to the most important margin of safety mentioned above, there are
+however a couple of more margins of safety embedded in the current framework.
+These are:
+\begin{itemize}
+    \item No shorting allowed. From a purely mathematical point of view,
+    shorting would be allowed. Without detailed math, it's easy to see how a
+    company with a negative expected return would result in a short position.
+    However, due to the asymmetry of the potential losses compared to gains,
+    coupled with the usual time--frame limit that comes with shorting, the
+    author decided to avoid it.
+    \item No use of leverage allowed. Again, from a purely mathematical point of
+    view, use of leverage would sometimes be useful. The thinking in avoiding to
+    use leverage is that no--one should be in a hurry to get rich, and should
+    avoid risking good night's sleep based on short--term market fluctuations,
+    which are fairly hard to predict consistently (unless you work at
+    Renaissance Technologies, in which case you can scratch this).
+    \item No company without at least one downside scenario is allowed. By
+    disallowing inputs without downside, the framework forces you to focus and
+    think about what can go wrong, as opposed to dreaming about what can go
+    right. However, if one is absolutely (100\%) sure that a company does not
+    have a downside, then the solution is to lever up as much as possible, and
+    put all the money in that one company. It is our feeling that the best way
+    to handle such cases is outside of this framework. Alternatively, one can
+    always model an unknown downside scenario with a small probability (say
+    5--20\%) and intrinsic value of zero.
+\end{itemize}
+
+These assumptions and margins of safety are embedded into the framework in order
+to try and tie the rational mathematics with common--sense from other
+disciplines.
+
+\section{Mathematics}
+\label{sec:mathematics}
+
+The following derivation mostly follows the first part of the work by Byrnes and
+Barnett~\cite{byrnesBarnett}. The problem statement is repeated here for
+convenience: Given a set of candidate companies, each having a set of scenarios
+described by the probability $p$ and estimate of the intrinsic value
+$\mathcal{V}$, calculate the optimal allocation fraction $f$ for each candidate
+company by maximizing the long--term growth rate of assets. After a single
+outcome (realization), the change in value of assets can be written as follows:
+\begin{equation}
+\label{eq:1}
+    \mathcal{A}_{after}
+  = 
+    \mathcal{A}_{before}
+    \left( 1 + \sum_{j}^{N_c} f_j k_j \right)
+\end{equation} 
+
+\noindent where $\mathcal{A}$ is the value of assets (capital), $N_c$ is the
+number of candidate companies to consider, $f_j$ is the allocated fraction to
+$j$th company, and $k_j$ is one of the returns for a company $j$ defined as the
+relative difference between the estimated intrinsic value under a given scenario
+($\mathcal{V}$) and the market capitalization at the time of investing
+($\mathcal{M}$):
+\begin{equation}
+\label{eq:2}
+    k_j = \frac{\mathcal{V}_j - \mathcal{M}_j}{\mathcal{M}_j}
+\end{equation}
+
+\noindent If a significant number of (re)allocations ($N_a$) is performed in
+succession, the equation~\eqref{eq:1} can be written as follows:
+\begin{equation}
+\label{eq:3}
+    \mathcal{A}_{N_a}
+  = 
+    \mathcal{A}_{0} \prod_{i_1, i_2, \hdots, i_{N_o}}
+    \left( 1 + \sum_{j}^{N_c} f_j k_{ij} \right)^{n_i}
+\end{equation} 
+
+\noindent where $n_i \in {n_{i1}, n_{i2}, \hdots, n_{N_o}} $ is the number of
+the $i$th outcome that occurred $n_i$ times. Note that $k_{ij}$ represents the
+return of the $j$th company in the $i$th outcome. Following original Kelly's
+approach, a logarithmic growth function $\mathcal{G}$ is introduced:
+\begin{equation}
+\label{eq:4}
+    \mathcal{G} = \lim_{N_a \to \infty} \frac{1}{N_a} \ln
+        \frac{\mathcal{A}_{N_a}}{\mathcal{A}_0}
+\end{equation}
+
+\noindent and the goal is to find its maximum with respect to allocation
+fractions $f_j$:
+\begin{equation}
+\label{eq:5}
+    \frac{\partial \mathcal{G}}{\partial f_j} = 0
+\end{equation}
+
+\noindent Substituting equation~\eqref{eq:1} into equation~\eqref{eq:5} results
+in the following equation, after some calculus and algebra:
+\begin{equation}
+\label{eq:6}
+    \lim_{N_a \to \infty} \frac{1}{N_a}
+    \sum_{i}^{N_o} \frac{n_i k_{ij}}{1 + \sum_{j}^{N_c} f_j k_{ij}} = 0
+\end{equation}
+
+\noindent If one assumes an infinite number of (re)allocations $N_a$,
+the following relation holds\footnote{This is an assumption that your author is
+uncomfortable with, but \textit{feels} it is fine because of the margins of
+safety embedded into the thinking that goes into assessing each investment
+opportunity.}:
+\begin{equation}
+\label{eq:7}
+    \lim_{N_a \to \infty} \frac{n_i}{N} = p_i
+\end{equation}
+
+\noindent Where $p_i$ is the probability of the $i$th outcome. For example, if
+there are two companies, each with two 50--50 scenarios, there will be four
+outcomes in total with the probability of each outcome equal to 25\%. Finally,
+substituting equation~\eqref{eq:7} into~\eqref{eq:6} results in a system of
+equations written in terms of probabilities $p_i$, expected returns for each
+company in each of the outcomes $k_{ij}$, and allocation fractions for each
+company $f_j$:
+\begin{equation}
+\label{eq:8}
+    \sum_{i}^{N_o} \frac{p_i k_{ij}}{1 + \sum_{j}^{N_c} f_j k_{ij}} = 0
+\end{equation}
+
+\noindent The equation~\eqref{eq:8} represents a non--linear system of equations
+in the unknown fractions $f_j$, which when solved, should yield optimal
+allocation strategy for maximizing long--term growth of capital.
+
+\section{Numerics}
+\label{sec:numerics}
+
+\noindent The equation~\eqref{eq:8} can be written succinctly as:
+\begin{equation}
+\label{eq:9}
+    \mathcal{F}_i(f_j) = 0
+\end{equation}
+
+\noindent Because $\mathcal{F}_i$ is a non--linear equation in $f_j$,
+the Newton--Raphson method is used to find a numerical solution. The method is
+iterative and starts by linearizing the equation around the previous solution
+from the previous iteration:
+\begin{equation}
+\label{eq:10}
+    \mathcal{F}_i^o + \sum_{j}^{N_c} \mathcal{J}_{ij}^o (f_j^n - f_j^o) = 0
+\end{equation}
+
+\noindent where $\mathcal{J}_{ij}$ is the Jacobian of $\mathcal{F_i}$, and
+superscripts $^n$ and $^o$ denote the new value and the old value, respectively.
+The Jacobian is:
+\begin{equation}
+\label{eq:11}
+    \mathcal{J}_{ij}
+  = 
+    - \sum_{o}^{N_o}
+      \frac{p_o k_{oi} k_{oj}}{\left(1 + \sum_{j}^{N_c} f_j k_{ij} \right)^2}
+\end{equation}
+
+\noindent where subscript for outcome $i$ has been changed to $o$ in order to be
+able to write the Jacobian in the standard $ij$ notation.
+
+The numerical procedure starts by assuming the uniform allocation across
+all companies, i.e. $f_j = f = \frac{1}{N_c}$. Based on the $f_j^o$ in the
+current iteration, the linear system in equation~\eqref{eq:10} is solved to find
+the new solution $f_j^n$. The process is repeated until sufficient level of
+accuracy is reached~\footnote{Usually two significant digits is enough
+considering the uncertainty and the judgment required for the inputs.}.
+
+A practical approach is used to prevent shorting and use of leverage. Shorting
+would occur if any of the fractions is negative, and is prevented by filtering
+out the candidate companies with negative expected return before solving the
+equations. The use of leverage is avoided by normalizing the fractions after
+obtaining a numerical solution, if the sum of all fractions exceeds 1. The
+author is well--aware that this is somewhat a brute--force approach, and it will
+be a topic of future work to avoid shorting and use of leverage by using
+inequality constraints.
+
+\section{Example}
+\label{sec:example}
+
+\noindent As an example, consider seven candidate companies, each with two to
+four scenarios. Each scenario is represented by an intrinsic value and the
+probability of the scenario happening (or intrinsic value being reached at some
+point in the future). Note that how these numbers are obtained is outside of the
+scope of this work, although it is important to stress that the validity and
+conservative assumptions behind these numbers are probably the most important
+part of an investor's job. The example inputs are presented
+in~\autoref{tab:companyA} to~\autoref{tab:companyF}.
+
+\begin{table}[!ht]
+\caption{Company A with current market cap of 214B USD.}
+\vspace{0.25cm}
+\centering
+\begin{tabular}{l|c|c}
+Scenario & Intrinsic value & Probability \\
+\hline
+Total loss & 0 USD & 5\% \\
+Bear thesis & 170B USD & 30\% \\
+Base thesis & 270B USD & 50\% \\
+Bull thesis & 360B USD & 15\% \\
+\end{tabular}%
+\label{tab:companyA}%
+\end{table}%
+
+\begin{table}[!ht]
+\caption{Company B with current market cap of 306M USD.}
+\vspace{0.25cm}
+\centering
+\begin{tabular}{l|c|c}
+Scenario & Intrinsic value & Probability \\
+\hline
+Total loss& 0 USD & 5\% \\
+Bear thesis & 300M USD & 50\% \\
+Base thesis & 900M USD & 45\% \\
+\end{tabular}%
+\label{tab:companyB}%
+\end{table}%
+
+\begin{table}[!ht]
+\caption{Company C with current market cap of 34M GBP.}
+\vspace{0.25cm}
+\centering
+\begin{tabular}{l|c|c}
+Scenario & Intrinsic value & Probability \\
+\hline
+Total loss & 0 GBP & 10\% \\
+Bear thesis & 33.5M GBP & 50\% \\
+Base thesis & 135M GBP & 40\% \\
+\end{tabular}%
+\label{tab:companyC}%
+\end{table}%
+
+\begin{table}[!ht]
+\caption{Company D with current market cap of 806M SGD.}
+\vspace{0.25cm}
+\centering
+\begin{tabular}{l|c|c}
+Scenario & Intrinsic value & Probability \\
+\hline
+Bear thesis & 330M SGD & 40\% \\
+Base thesis & 1B SGD & 50\% \\
+Bull thesis & 4B SGD & 10\% \\
+\end{tabular}%
+\label{tab:companyD}%
+\end{table}%
+
+\begin{table}[!ht]
+\caption{Company E with current market cap of 17.6 CAD.}
+\vspace{0.25cm}
+\centering
+\begin{tabular}{l|c|c}
+Scenario & Intrinsic value & Probability \\
+\hline
+Total loss & 0 CAD & 5\% \\
+Bear thesis & 10M CAD & 25\% \\
+Base thesis & 25M CAD & 70\% \\
+\end{tabular}%
+\label{tab:companyE}%
+\end{table}%
+
+\begin{table}[!ht]
+\caption{Company F with current market cap of 581M USD.}
+\vspace{0.25cm}
+\centering
+\begin{tabular}{l|c|c}
+Scenario & Intrinsic value & Probability \\
+\hline
+Total loss & 0 USD & 20\% \\
+Base thesis & 1B CAD & 80\% \\
+\end{tabular}%
+\label{tab:companyF}%
+\end{table}%
+
+
+\noindent Based on the inputs, the portfolio allocation that maximizes the
+long--term growth--rate of capital is presented in~\autoref{tab:results}.
+
+\begin{table}
+\caption{Portfolio that maximizes long--term growth--rate of capital.}
+\vspace{0.25cm}
+\centering
+\begin{tabular}{l|c|c|c|c|c|c}
+Company & A & B & C & D & E & F \\
+\hline
+Allocation fractions & 13\% & 27\% & 26\% & 12\% & 12\% & 10\% \\
+\end{tabular}%
+\label{tab:results}%
+\end{table}%
+
+With the obtained fractions, it is easy to obtain some useful
+statistics on the portfolio, namely:
+\begin{itemize}
+    \item Expected gain of 61 cents for every dollar invested,
+    \item Cumulative probability of loss of capital of 13\%,
+    \item Permanent loss of 95\% of capital with probability of 0.001\%.
+\end{itemize}
+
+\noindent The last item is particularly interesting to your author. According to
+Actuarial Life Tables in~\cite{lifeTables}, the probability of your currently 33
+year--old author dying within the next year is approximately 0.25\%. That is two
+orders of magnitude higher than the probability of the permanent loss of capital
+for this portfolio. Considering that the portfolio has six stocks, that is a
+very strong argument against excessive diversification, especially if:
+\begin{itemize}
+    \item One thinks of stocks as ownership shares of businesses, which implies
+    long--term thinking and not being bothered by market fluctuations, 
+    \item One embeds a margin of safety in different scenarios for different
+    companies by e.g. recognizing that both unknown and known bad things may
+    happen.
+\end{itemize}
+
+\noindent The observation about excessive diversification Poor Charlie's
+Almanac~\cite{almanack}.
+
+\section{Future Work}
+\label{sec:futureWork}
+
+\noindent The future work will focus on adding a constraint for the maximum
+allowable risk of the permanent loss of capital. The idea is that an investor
+could input the probability of the permanent loss of capital and the fraction of
+capital one is willing to risk, and the allocation will change accordingly. For
+example, an investor might be fine with losing 50\% of capital with the
+probability of 0.1\% as a worst--case outcome, which should be an additional
+input to the system.
+
+\clearpage
+
+\bibliographystyle{unsrt}
+\bibliography{./references}
+
+\end{document}
+
