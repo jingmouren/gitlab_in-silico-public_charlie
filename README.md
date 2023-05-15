@@ -37,7 +37,7 @@ tool won't allow you to:
 ### Disclaimer
 
 Calculating intrinsic value of a company is more of an art than science, especially for a high-quality, growing
-businesses within your circle of competence. And according to Charlie Munger, Warren Buffett, Monish Pabrai and the
+businesses within your circle of competence. And according to Charlie Munger, Warren Buffett, Mohnish Pabrai and the
 like, one should focus precisely on getting such great businesses for a fair price. That means that you shouldn't take
 what this tool says at face value, and you should probably use its guidance infrequently.
 
@@ -50,6 +50,12 @@ following margins of safety:
 3. No companies without at least one downside scenario are allowed,
 4. And by far most importantly, conservative input assumptions should be provided. This is the tricky part, because this
    tool unfortunately can't protect you from yourself.
+
+## Documentation
+
+A white-paper describing the investment framework and the mathematics behind the software is found in
+[doc directory](/doc). The white-paper is written in `LaTeX` and the .pdf can be compiled by running:
+`pdflatex paper.tex && bibtex paper.aux && for i in {0..1}; do pdflatex paper.tex; done`
 
 ## Project
 
@@ -81,7 +87,7 @@ Project structure follows the recommended practices for `rust` projects:
   - Unit tests are separate modules in the same source files that they're testing
 - `src/bin` directory contains two binaries: one for generating the OpenAPI schema and one for running a server
 - `tests` directory contains integration tests
-- `examples` directory contains 
+- `examples` directory contains examples on client-side use for all endpoints/functionality
 
 ### Execution
 
