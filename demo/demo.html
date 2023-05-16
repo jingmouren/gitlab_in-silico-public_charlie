@@ -3,13 +3,101 @@
 	<head>
 	</head>
 	<body>
-		<textarea id="inputJson"></textarea>
+		<button onclick="addCompany()">Add company</button>
 		<button onclick="allocate()">Allocate</button>
-		<textarea id="outputJson"></textarea>
+		<textarea id="allocateResponse"></textarea>
+		<table id="table"></table>
 		<script>
+			let lastCompanyIndex = 0
+			let lastScenarioIndex = {}
+			
+			function addCompany() {
+				let html = `
+					<label for="name${lastCompanyIndex}">Name</label>
+					<textarea id="name${lastCompanyIndex}"></textarea>
+					<label for="ticker${lastCompanyIndex}">Ticker</label>
+					<textarea id="ticker${lastCompanyIndex}"></textarea>
+					<label for="description${lastCompanyIndex}">Description</label>
+					<textarea id="description${lastCompanyIndex}"></textarea>
+					<label for="market_cap${lastCompanyIndex}">Market cap</label>
+					<textarea id="market_cap${lastCompanyIndex}"></textarea>
+					<button id="button${lastCompanyIndex}" onclick="addScenario(${lastCompanyIndex})">Add scenario</button>
+					<ul id="company${lastCompanyIndex}scenarios"></ul>
+				`
+				
+				let htmlObject = document.createElement('div');
+				htmlObject.innerHTML = html;
+				document.getElementById("table").append(htmlObject);
+				
+				lastCompanyIndex += 1
+			}
+			
+			function addScenario(companyIndex) {
+				let scenarioIndex = 0
+				
+				if (lastScenarioIndex.hasOwnProperty(companyIndex)) {
+					scenarioIndex = lastScenarioIndex[companyIndex]
+				}
+				
+				let html = `
+					<label for="thesis${companyIndex}${scenarioIndex}">Thesis</label>
+					<textarea id="thesis${companyIndex}${scenarioIndex}"></textarea>
+					<label for="intrinsic_value${companyIndex}${scenarioIndex}">Intrinsic value</label>
+					<textarea id="intrinsic_value${companyIndex}${scenarioIndex}"></textarea>
+					<label for="probability${companyIndex}${scenarioIndex}">Probability</label>
+					<textarea id="probability${companyIndex}${scenarioIndex}"></textarea>
+				`
+				
+				let htmlObject = document.createElement('div');
+				htmlObject.innerHTML = html;
+				document.getElementById(`company${companyIndex}scenarios`).append(htmlObject);
+				
+				scenarioIndex += 1
+				lastScenarioIndex[companyIndex] = scenarioIndex
+			}
+			
 			function allocate() {
+				let companies = []
+				
+				for (let companyIndex = 0; companyIndex < lastCompanyIndex; companyIndex++) {
+					let companyMap = {}
+					
+					for (let companyKey of ["name", "ticker", "description", "market_cap"]) {
+						let value = document.getElementById(`${companyKey}${companyIndex}`).value
+						
+						if (companyKey == "market_cap") {
+							value = +value
+						}
+						
+						companyMap[companyKey] = value
+					}
+					
+					let scenarios = []
+					
+					for (let scenarioIndex = 0; scenarioIndex < lastScenarioIndex[companyIndex]; scenarioIndex++) {
+						let scenarioMap = {}
+						
+						for (let scenarioKey of ["thesis", "intrinsic_value", "probability"]) {
+							let value = document.getElementById(`${scenarioKey}${companyIndex}${scenarioIndex}`).value
+							
+							if (scenarioKey != "thesis") {
+								value = +value
+							}
+							
+							scenarioMap[scenarioKey] = value
+						}
+						
+						scenarios.push(scenarioMap)
+					}
+					
+					companyMap["scenarios"] = scenarios
+					companies.push(companyMap)
+				}
+				
+				let inputJson = {}
+				inputJson["companies"] = companies
+
 				let internalEndpoint = 'http://localhost:8000/allocate'
-				let inputJson = document.getElementById('inputJson').value
 
 				fetch(internalEndpoint, {
 					method: 'POST',
@@ -17,10 +105,10 @@
 						'dataType': 'json',
 						'content-type': 'application/json'
 					},
-					body: inputJson
+					body: JSON.stringify(inputJson)
 				})
 				.then(response => response.text())
-				.then(data => document.getElementById('outputJson').value = JSON.stringify(JSON.parse(data), null, 4))
+				.then(data => document.getElementById('allocateResponse').value = JSON.stringify(JSON.parse(data), null, 4))
 				.catch(error => console.error('Encountered error:', error))
 			}
 		</script>
