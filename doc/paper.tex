@@ -39,8 +39,8 @@ years: A trend that will likely continue. When the excess cash comes in, the
 following question arises: How much money to put in which stocks? That question
 had been answered by looking at our fundamental analysis for each company, and
 performing some vague hand calculations. That of course works well because of
-all the other uncertainties in the investment process, but the motivation was
-to:
+all the other uncertainties in the investment process, but we were still
+motivated to:
 \begin{enumerate}
     \item Improve the odds of us behaving rationally (i.e. minimize
     psychological misjudgments such as anchoring bias~\cite{kahneman},
@@ -61,13 +61,13 @@ and intrinsic value estimate, how much of our capital to invest in each?
 The answer to this question has been given by Kelly with his widely known Kelly
 formula (sometimes called Kelly criterion)~\cite{kelly}. The Kelly's approach
 starts by maximizing long--term growth of capital when one is presented with
-infinite amount of opportunities to bet. This work extends that idea by
+an infinite amount of opportunities to bet on. This work extends that idea by
 considering:
 \begin{enumerate}
     \item Multiple companies (stocks) in parallel,
     \item An arbitrary number of scenarios for each company,
     \item A fundamentals--based analysis (after all, a stock is an ownership
-    share of business~\cite{intelligentInvestor}.
+    share of business~\cite{intelligentInvestor}).
 \end{enumerate}
 
 The generalization leads to a non--linear system of equations that when solved,
@@ -95,7 +95,7 @@ During the mathematical derivation presented in \autoref{sec:mathematics}, an
 assumption is made that the number of bets is very high (tends to infinity).
 This work does not try to justify this assumption in a strong mathematical
 form~\footnote{It is on the author's TODO list to try and prove this.}. Here's a
-soft, non-mathematical reasoning on why your author thinks this is fine: The
+soft, non-mathematical reasoning on why the author thinks this is fine: The
 assumption is made in order to write the equations in terms of probabilities
 instead of the number of outcomes divided by the number of bets. Therefore, as
 long as the input probabilities are \textit{conservatively} estimated, the
@@ -156,8 +156,8 @@ outcome (realization), the change in value of assets can be written as follows:
 
 \noindent where $\mathcal{A}$ is the value of assets (capital), $N_c$ is the
 number of candidate companies to consider, $f_j$ is the allocated fraction to
-$j$th company, and $k_j$ is one of the returns for a company $j$ defined as the
-relative difference between the estimated intrinsic value under a given scenario
+$j$th company, and $k_j$ is a return for a company $j$ defined as the relative
+difference between the estimated intrinsic value under a given scenario
 ($\mathcal{V}$) and the market capitalization at the time of investing
 ($\mathcal{M}$):
 \begin{equation}
@@ -175,10 +175,10 @@ succession, the equation~\eqref{eq:1} can be written as follows:
     \left( 1 + \sum_{j}^{N_c} f_j k_{ij} \right)^{n_i}
 \end{equation} 
 
-\noindent where $n_i \in {n_{i1}, n_{i2}, \hdots, n_{N_o}} $ is the number of
-the $i$th outcome that occurred $n_i$ times. Note that $k_{ij}$ represents the
-return of the $j$th company in the $i$th outcome. Following original Kelly's
-approach, a logarithmic growth function $\mathcal{G}$ is introduced:
+\noindent where $n_i \in {n_{i1}, n_{i2}, \hdots, n_{N_o}}$ is the number of
+times the $i$th outcome has occurred. Note that $k_{ij}$ represents the return
+of the $j$th company for the $i$th outcome. Following original Kelly's approach,
+a logarithmic growth function $\mathcal{G}$ is introduced:
 \begin{equation}
 \label{eq:4}
     \mathcal{G} = \lim_{N_a \to \infty} \frac{1}{N_a} \ln
@@ -200,11 +200,11 @@ in the following equation, after some calculus and algebra:
     \sum_{i}^{N_o} \frac{n_i k_{ij}}{1 + \sum_{j}^{N_c} f_j k_{ij}} = 0
 \end{equation}
 
-\noindent If one assumes an infinite number of (re)allocations $N_a$,
-the following relation holds\footnote{This is an assumption that your author is
-uncomfortable with, but \textit{feels} it is fine because of the margins of
-safety embedded into the thinking that goes into assessing each investment
-opportunity.}:
+\noindent If one assumes an infinite number of (re)allocations
+$N_a$\footnote{The assumption regarding the infinite number of allocations is
+something that the author is slightly uncomfortable with, but \textit{feels} it
+is fine because of the margins of safety embedded into the thinking that goes
+into assessing each investment opportunity.}, the following relation holds:
 \begin{equation}
 \label{eq:7}
     \lim_{N_a \to \infty} \frac{n_i}{N} = p_i
@@ -344,7 +344,7 @@ Bull thesis & 4B SGD & 10\% \\
 \end{table}%
 
 \begin{table}[!ht]
-\caption{Company E with current market cap of 17.6 CAD.}
+\caption{Company E with current market cap of 17.6M CAD.}
 \vspace{0.25cm}
 \centering
 \begin{tabular}{l|c|c}
@@ -365,7 +365,7 @@ Base thesis & 25M CAD & 70\% \\
 Scenario & Intrinsic value & Probability \\
 \hline
 Total loss & 0 USD & 20\% \\
-Base thesis & 1B CAD & 80\% \\
+Base thesis & 1B USD & 80\% \\
 \end{tabular}%
 \label{tab:companyF}%
 \end{table}%
@@ -394,12 +394,12 @@ statistics on the portfolio, namely:
     \item Permanent loss of 95\% of capital with probability of 0.001\%.
 \end{itemize}
 
-\noindent The last item is particularly interesting to your author. According to
-Actuarial Life Tables in~\cite{lifeTables}, the probability of your currently 33
-year--old author dying within the next year is approximately 0.25\%. That is two
-orders of magnitude higher than the probability of the permanent loss of capital
-for this portfolio. Considering that the portfolio has six stocks, that is a
-very strong argument against excessive diversification, especially if:
+\noindent The last item is particularly interesting to the author. According to
+Actuarial Life Tables in~\cite{lifeTables}, the probability of the (currently 33
+year--old) author dying within the next year is approximately 0.25\%. That is
+two orders of magnitude higher than the probability of the permanent loss of
+capital for this portfolio. Considering that the portfolio has six stocks, that
+is a very strong argument against excessive diversification, especially if:
 \begin{itemize}
     \item One thinks of stocks as ownership shares of businesses, which implies
     long--term thinking and not being bothered by market fluctuations, 
@@ -408,8 +408,8 @@ very strong argument against excessive diversification, especially if:
     happen.
 \end{itemize}
 
-\noindent The observation about excessive diversification Poor Charlie's
-Almanac~\cite{almanack}.
+\noindent The observation about excessive diversification is inline with the
+thoughts from the Poor Charlie's Almanack~\cite{almanack}.
 
 \section{Future Work}
 \label{sec:futureWork}
