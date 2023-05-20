@@ -220,7 +220,8 @@ fn test_allocate_with_validation_problems() {
         allocation_response.validation_problems.unwrap(),
         vec![ValidationResult::PROBLEM(Problem {
             code: "probabilities-for-all-scenarios-do-not-sum-up-to-one".to_string(),
-            message: "Probabilities of all scenarios for company A do not sum up to 1. Sum = 0.98.".to_string(),
+            message: "Probabilities of all scenarios for company A do not sum up to 1. Sum = 0.98."
+                .to_string(),
             severity: Severity::ERROR,
         })],
     );
