@@ -18,7 +18,7 @@
 		</style>
 	</head>
 	<body>
-		<center>
+		<div style="text-align: center;">
 			<h1>Companies</h1>
 			<button id="fillExampleButton" class="buttonClass" onclick="fillExample()">Fill example</button>
 			<ol id="companyList"></ol>
@@ -27,7 +27,7 @@
 			<button class="buttonClass" onclick="allocate()">Allocate</button>
 			<div style="height:10px"></div>
 			<textarea id="allocateResponse" style="width:800px;height:100px"></textarea>
-		</center>
+		</div>
 		<script>
 			let lastCompanyIndex = 0
 			let lastScenarioIndex = {}
@@ -277,60 +277,122 @@
 				document.getElementById("fillExampleButton").hidden = true
 			}
 
-			function allocate() {
-				let companies = []
+			async function allocate() {
+			    let companies = []
 
-				for (let companyIndex = 0; companyIndex < lastCompanyIndex; companyIndex++) {
-					let companyMap = {}
+			    for (let companyIndex = 0; companyIndex < lastCompanyIndex; companyIndex++) {
+			        let companyMap = {}
 
-					for (let companyKey of ["name", "ticker", "description", "market_cap"]) {
-						let value = document.getElementById(`${companyKey}${companyIndex}`).value
+			        for (let companyKey of ["name", "ticker", "description", "market_cap"]) {
+			            let value = document.getElementById(`${companyKey}${companyIndex}`).value
 
-						if (companyKey == "market_cap") {
-							value = +value
-						}
+			            if (companyKey == "market_cap") {
+			                value = +value
+			            }
 
-						companyMap[companyKey] = value
-					}
+			            companyMap[companyKey] = value
+			        }
 
-					let scenarios = []
+			        let scenarios = []
 
-					for (let scenarioIndex = 0; scenarioIndex < lastScenarioIndex[companyIndex]; scenarioIndex++) {
-						let scenarioMap = {}
+			        for (let scenarioIndex = 0; scenarioIndex < lastScenarioIndex[companyIndex]; scenarioIndex++) {
+			            let scenarioMap = {}
 
-						for (let scenarioKey of ["thesis", "intrinsic_value", "probability"]) {
-							let value = document.getElementById(`${scenarioKey}${companyIndex}_${scenarioIndex}`).value
+			            for (let scenarioKey of ["thesis", "intrinsic_value", "probability"]) {
+			                let value = document.getElementById(`${scenarioKey}${companyIndex}_${scenarioIndex}`).value
 
-							if (scenarioKey != "thesis") {
-								value = +value
-							}
+			                if (scenarioKey != "thesis") {
+			                    value = +value
+			                }
 
-							scenarioMap[scenarioKey] = value
-						}
+			                scenarioMap[scenarioKey] = value
+			            }
 
-						scenarios.push(scenarioMap)
-					}
+			            scenarios.push(scenarioMap)
+			        }
 
-					companyMap["scenarios"] = scenarios
-					companies.push(companyMap)
-				}
+			        companyMap["scenarios"] = scenarios
+			        companies.push(companyMap)
+			    }
 
-				let inputJson = {}
-				inputJson["companies"] = companies
+			    let inputJson = {}
+			    inputJson["companies"] = companies
 
-				let internalEndpoint = 'http://localhost:8000/allocate'
+			    const internalEndpoint = 'http://localhost:8000/allocate'
 
-				fetch(internalEndpoint, {
-					method: 'POST',
-					headers: {
-						'dataType': 'json',
-						'content-type': 'application/json'
-					},
-					body: JSON.stringify(inputJson)
-				})
-				.then(response => response.text())
-				.then(data => document.getElementById('allocateResponse').value = JSON.stringify(JSON.parse(data), null, 4))
-				.catch(error => console.error('Encountered error:', error))
+				async function getAllocationsAsJson() {
+			    	const response = await fetch(internalEndpoint, {
+			    	    method: 'POST',
+			    	    headers: {
+			    	        'dataType': 'json',
+			    	        'content-type': 'application/json'
+			    	    },
+			    	    body: JSON.stringify(inputJson)
+			    	})
+
+			    	return response.json()
+			    }
+
+			    const outputJson = await getAllocationsAsJson()
+
+				console.log(outputJson)
+
+			    // Check for errors
+			    let err = outputJson["error"]
+			    if (err != null) {
+			        let message = err["message"]
+			        let errorString = "Encountered an error with the message: " + message + "\n"
+			        document.getElementById('allocateResponse').value = errorString
+			        return
+			    }
+
+			    // Check for validation errors
+			    let outputString = ""
+			    let validationProblems = outputJson["validation_problems"]
+			    if (validationProblems != null && validationProblems.length > 0) {
+			        outputString += "Encountered following problems with the inputs:\n"
+			        for (vp of validationProblems) {
+						const msg = vp["PROBLEM"]["message"]
+						const severity = vp["PROBLEM"]["severity"]
+
+						// Print and return on encountering the first error, while collect all warnings
+			        	if (severity == "WARNING") {
+			            	outputString += "    - WARNING: " + msg + "\n"
+			            } else if (severity == "ERROR") {
+			            	outputString += "    - ERROR: " + msg + "\n\n"
+			            	outputString += "Fix your input to proceed."
+							document.getElementById('allocateResponse').value = outputString
+			            	return
+			            }
+			        }
+			        outputString += "\n"
+			    }
+
+			    // Format optimal allocations
+			    outputString += "Optimal allocation that maximizes long-term growth of capital is:\n"
+			    for (allocation of outputJson["result"]["allocations"]) {
+			        const ticker = allocation["ticker"]
+			        const fraction = 100 * allocation["fraction"]
+			        outputString += "    - Company " + ticker + ": " + fraction.toFixed(1) + "%\n"
+			    }
+
+			    // Format worst-case scenario
+			    outputString += "\n"
+			    const wcProbability = 100 * outputJson["result"]["analysis"]["worst_case_outcome"]["probability"]
+			    const wcLoss = - 100 * outputJson["result"]["analysis"]["worst_case_outcome"]["weighted_return"]
+			    outputString += "Worst-case outcome implies losing " + wcLoss.toFixed(1) + "% of the capital with probability of " + wcProbability.toFixed(6) + "%.\n"
+
+			    // Format cumulative probability of loss
+			    outputString += "\n"
+			    const cumLossProbability = 100 * outputJson["result"]["analysis"]["cumulative_probability_of_loss"]
+			    outputString += "Probability of losing money across all outcomes is " + cumLossProbability.toFixed(1) + "%.\n"
+
+			    // Format expected return
+			    outputString += "\n"
+			    const expectedReturn = outputJson["result"]["analysis"]["expected_return"]
+			    outputString += "For every dollar invested, the expected return is " + expectedReturn.toFixed(2) + " dollars.\n"
+
+			    document.getElementById('allocateResponse').value = outputString
 			}
 		</script>
 	</body>

@@ -102,7 +102,7 @@ impl Company {
         if (sum - 1.0).abs() > TOLERANCE {
             ValidationResult::PROBLEM(Problem {
                 code: "probabilities-for-all-scenarios-do-not-sum-up-to-one".to_string(),
-                message: format!("Probabilities of all scenarios do not sum up to 1. Sum = {sum}."),
+                message: format!("Probabilities of all scenarios for company {name} do not sum up to 1. Sum = {sum}.", name = self.name),
                 severity: Severity::ERROR,
             })
         } else {
@@ -323,7 +323,7 @@ mod test {
             .validate()
             .contains(&ValidationResult::PROBLEM(Problem {
                 code: "probabilities-for-all-scenarios-do-not-sum-up-to-one".to_string(),
-                message: "Probabilities of all scenarios do not sum up to 1. Sum = 0.8."
+                message: "Probabilities of all scenarios for company Some Company do not sum up to 1. Sum = 0.8."
                     .to_string(),
                 severity: Severity::ERROR,
             })));
