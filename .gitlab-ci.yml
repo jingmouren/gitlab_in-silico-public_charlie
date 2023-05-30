@@ -1,6 +1,7 @@
 default:
   tags:
     - ted
+    - focus
 
 .rust_image:
   image: "rust:latest"
