@@ -6,7 +6,7 @@ use std::collections::HashSet;
 use std::hash::{Hash, Hasher};
 
 /// A scenario is represented by an investment thesis, which can be boiled down to the expected
-/// intrinsic value and the estimated probability that this scenario will play out in the future
+/// intrinsic value and the estimated probability that this scenario will play out in the future.
 #[derive(Serialize, Deserialize, JsonSchema, Clone, Debug)]
 pub struct Scenario {
     pub thesis: String,
@@ -14,7 +14,7 @@ pub struct Scenario {
     pub probability: f64,
 }
 
-/// Two scenarios are considered equal if their theses are equal, irrespective of the numbers
+/// Two scenarios are considered equal if their theses are equal, irrespective of the numbers.
 impl PartialEq<Self> for Scenario {
     fn eq(&self, other: &Self) -> bool {
         self.thesis == other.thesis
@@ -23,7 +23,7 @@ impl PartialEq<Self> for Scenario {
 
 impl Eq for Scenario {}
 
-/// Hash key based on the thesis
+/// Hash key based on the thesis.
 impl Hash for Scenario {
     fn hash<H: Hasher>(&self, hasher: &mut H) {
         self.thesis.hash(hasher)
@@ -31,14 +31,24 @@ impl Hash for Scenario {
 }
 
 impl Validate for Scenario {
-    /// Does all validations
+    /// Does all validations.
     fn validate(&self) -> HashSet<ValidationResult> {
         HashSet::from([self.validate_probability_bounds()])
     }
 }
 
 impl Scenario {
-    /// Validates that all the probabilities are between 0 and 1
+    /// Calculates the return of this scenario given the market cap.
+    pub fn scenario_return(&self, market_cap: f64) -> f64 {
+        (self.intrinsic_value - market_cap) / market_cap
+    }
+
+    /// Calculates the probability weighted return for this scenario given the market cap.
+    pub fn probability_weighted_return(&self, market_cap: f64) -> f64 {
+        self.probability * self.scenario_return(market_cap)
+    }
+
+    /// Validates that all the probabilities are between 0 and 1.
     fn validate_probability_bounds(&self) -> ValidationResult {
         if self.probability < 0.0 {
             return ValidationResult::PROBLEM(Problem {
@@ -69,6 +79,7 @@ impl Scenario {
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::assert_close;
     use std::collections::hash_map::DefaultHasher;
 
     #[test]
@@ -99,6 +110,26 @@ mod test {
         assert_eq!(test_scenario.thesis, "Liquidation value");
         assert_eq!(test_scenario.intrinsic_value, 1e6);
         assert_eq!(test_scenario.probability, 0.6);
+    }
+
+    #[test]
+    fn test_scenario_return() {
+        let test_scenario = Scenario {
+            thesis: "Awesome thesis".to_string(),
+            intrinsic_value: 1e6,
+            probability: 0.2,
+        };
+        assert_close!(test_scenario.scenario_return(2e6), -0.5, 1e-10);
+    }
+
+    #[test]
+    fn test_probability_weighted_return() {
+        let test_scenario = Scenario {
+            thesis: "Awesome thesis".to_string(),
+            intrinsic_value: 1e6,
+            probability: 0.2,
+        };
+        assert_close!(test_scenario.probability_weighted_return(2e6), -0.1, 1e-10);
     }
 
     #[test]

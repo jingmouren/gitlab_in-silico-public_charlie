@@ -1,6 +1,7 @@
 use crate::model::company::Ticker;
 use crate::model::errors::Error;
 use crate::model::portfolio::Portfolio;
+use crate::model::responses::ProbabilityAndReturns;
 use ordered_float::OrderedFloat;
 use slog::{info, Logger};
 use std::collections::HashMap;
@@ -68,7 +69,7 @@ pub fn all_outcomes(portfolio: &Portfolio) -> Result<Vec<Outcome>, Error> {
                 let c = &pc.company;
                 let s = &c.scenarios[scenario_id];
 
-                let company_return = (s.intrinsic_value - c.market_cap) / c.market_cap;
+                let company_return = s.scenario_return(c.market_cap);
                 outcome.weighted_return += pc.fraction * company_return;
                 outcome.probability *= s.probability;
                 outcome
@@ -103,13 +104,10 @@ pub fn expected_return(portfolio: &Portfolio, logger: &Logger) -> f64 {
         .companies
         .iter()
         .map(|pc| {
-            let market_cap = pc.company.market_cap;
             pc.company
                 .scenarios
                 .iter()
-                .map(|s| {
-                    pc.fraction * s.probability * (s.intrinsic_value - market_cap) / market_cap
-                })
+                .map(|s| pc.fraction * s.probability_weighted_return(pc.company.market_cap))
                 .sum::<f64>()
         })
         .sum();
@@ -123,27 +121,54 @@ pub fn expected_return(portfolio: &Portfolio, logger: &Logger) -> f64 {
     expected_return
 }
 
-/// Finds an outcome with maximum loss of capital and reports its probability
-pub fn worst_case_outcome<'a>(outcomes: &'a [Outcome], logger: &Logger) -> &'a Outcome {
-    info!(logger, "Searching for worst case outcome.");
-    let worst_case_outcome = outcomes
-        .iter()
-        .min_by_key(|o| OrderedFloat(o.weighted_return))
-        .unwrap_or_else(|| {
-            panic!(
-                "Did not manage to find the worst case outcome in the list of outcomes: {:?}",
-                outcomes
-            )
-        });
+/// Finds the worst case outcome in a portfolio.
+pub fn worst_case_outcome(portfolio: &Portfolio, logger: &Logger) -> ProbabilityAndReturns {
+    if portfolio.companies.is_empty() {
+        panic!("Can't find a worst-case outcome for an empty portfolio.")
+    }
 
     info!(
         logger,
-        "Worst case outcome implies permanent loss of {:.1}% of invested assets with probability {:.6}%",
-        100.0 * worst_case_outcome.weighted_return,
-        100.0 * worst_case_outcome.probability
+        "Searching for the worst case outcome in a portfolio."
+    );
+    // Fraction may be negative (shorting), take it into account when finding the minimum.
+    let mut worst_case_probability = 1.0;
+    let mut worst_case_return = 0.0;
+    let mut worst_case_probability_weighted_return = 0.0;
+    portfolio.companies.iter().for_each(|c| {
+        let worst_scenario = c
+            .company
+            .scenarios
+            .iter()
+            .min_by_key(|s| {
+                OrderedFloat(c.fraction * s.probability_weighted_return(c.company.market_cap))
+            })
+            .unwrap_or_else(|| {
+                panic!(
+                    "Did not manage to find worst-case scenario for the company {:?}.",
+                    c.company.ticker
+                )
+            });
+        let ret = c.fraction * worst_scenario.scenario_return(c.company.market_cap);
+        worst_case_probability *= worst_scenario.probability;
+        worst_case_return += ret;
+        worst_case_probability_weighted_return += worst_scenario.probability * ret;
+    });
+
+    info!(
+        logger,
+        "Worst case outcome has a probability weighted return of {:.1}%, which implies permanent \
+        loss of {:.1}% of invested assets with probability {:.6}%.",
+        100.0 * worst_case_probability_weighted_return,
+        100.0 * worst_case_return,
+        100.0 * worst_case_probability
     );
 
-    worst_case_outcome
+    ProbabilityAndReturns {
+        probability: worst_case_probability,
+        portfolio_return: worst_case_return,
+        probability_weighted_return: worst_case_probability_weighted_return,
+    }
 }
 
 /// Calculates the cumulative probability of losing money
@@ -510,34 +535,36 @@ mod test {
     }
 
     #[test]
-    #[should_panic(
-        expected = "Did not manage to find the worst case outcome in the list of outcomes:"
-    )]
-    fn test_worst_case_outcome_fails_if_there_are_no_outcomes() {
+    #[should_panic(expected = "Can't find a worst-case outcome for an empty portfolio.")]
+    fn test_worst_case_outcome_fails_if_there_are_no_companies_in_portfolio() {
         let logger = create_test_logger();
-        let _worst_case = worst_case_outcome(&vec![], &logger);
+        let mut test_portfolio = get_test_portfolio_with_three_assets();
+        test_portfolio.companies.clear();
+        let _worst_case = worst_case_outcome(&test_portfolio, &logger);
+    }
+
+    #[test]
+    #[should_panic(expected = "Did not manage to find worst-case scenario for the company \"A\".")]
+    fn test_worst_case_outcome_fails_if_there_are_no_scenarios_in_a_portfolio_company() {
+        let logger = create_test_logger();
+        let mut test_portfolio = get_test_portfolio_with_three_assets();
+        test_portfolio.companies[0].company.scenarios.clear();
+        let _worst_case = worst_case_outcome(&test_portfolio, &logger);
     }
 
     #[test]
     fn test_worst_case_scenario() {
         let logger = create_test_logger();
-
         let test_portfolio = get_test_portfolio_with_three_assets();
-        let all_outcomes = all_outcomes(&test_portfolio).unwrap();
-        let worst_case = worst_case_outcome(&all_outcomes, &logger);
+        let worst_case = worst_case_outcome(&test_portfolio, &logger);
 
-        assert_eq!(
-            *worst_case,
-            Outcome {
-                weighted_return: -0.5,
-                probability: 0.08,
-                company_returns: HashMap::from([
-                    ("A".to_string(), -1.0),
-                    ("B".to_string(), -1.0),
-                    ("C".to_string(), 0.0),
-                ]),
-            }
-        )
+        assert_close!(0.08, worst_case.probability, company::TOLERANCE);
+        assert_close!(-0.5, worst_case.portfolio_return, company::TOLERANCE);
+        assert_close!(
+            -0.22,
+            worst_case.probability_weighted_return,
+            company::TOLERANCE
+        );
     }
 
     #[test]

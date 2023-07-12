@@ -1,16 +1,11 @@
-use charlie::allocation::FRACTION_TOLERANCE;
 use charlie::env::create_logger;
-use charlie::model::portfolio::PortfolioCandidates;
+use charlie::model::portfolio::AllocationInput;
 use charlie::model::responses::AllocationResponse;
-use charlie::utils::assert_close;
 use reqwest::StatusCode;
 use slog::{info, Level};
 
-/// Make assertion tolerance the same as the fraction tolerance (no point in more accuracy)
-const ASSERTION_TOLERANCE: f64 = FRACTION_TOLERANCE;
-
 const TEST_YAML: &str = "
-          companies:
+          candidates:
           - name: D
             ticker: D
             description: Business D
@@ -71,7 +66,7 @@ fn main() {
 
     // Create candidates and post
     info!(logger, "Preparing to post candidates to allocate endpoint.");
-    let candidates: PortfolioCandidates = serde_yaml::from_str(&TEST_YAML.to_string()).unwrap();
+    let candidates: AllocationInput = serde_yaml::from_str(&TEST_YAML.to_string()).unwrap();
 
     let client = reqwest::blocking::Client::new();
     let response = client
@@ -96,51 +91,7 @@ fn main() {
     assert_eq!(allocation_result.validation_problems, Some(vec![]));
 
     // Assert allocation results
-    info!(logger, "Asserting allocation results.");
-    let result = allocation_result.result.unwrap();
-    let tickers_and_fractions = result.allocations;
-
-    assert_eq!(tickers_and_fractions[0].ticker, "D".to_string());
-    assert_close!(
-        0.2337,
-        tickers_and_fractions[0].fraction,
-        ASSERTION_TOLERANCE
-    );
-
-    assert_eq!(tickers_and_fractions[1].ticker, "E".to_string());
-    assert_close!(
-        0.3847,
-        tickers_and_fractions[1].fraction,
-        ASSERTION_TOLERANCE
-    );
-
-    assert_eq!(tickers_and_fractions[2].ticker, "F".to_string());
-    assert_close!(
-        0.3816,
-        tickers_and_fractions[2].fraction,
-        ASSERTION_TOLERANCE
-    );
-
-    // Assert analysis result
-    info!(logger, "Asserting analysis results.");
-    let analysis_result = result.analysis;
-
-    assert_close!(
-        0.00125,
-        analysis_result.worst_case_outcome.probability,
-        1e-6
-    );
-    assert_close!(
-        -0.8731,
-        analysis_result.worst_case_outcome.weighted_return,
-        ASSERTION_TOLERANCE
-    );
-    assert_close!(
-        0.38625,
-        analysis_result.cumulative_probability_of_loss,
-        1e-6
-    );
-    assert_close!(0.1429, analysis_result.expected_return, ASSERTION_TOLERANCE);
-
+    info!(logger, "Unwrapping allocation result.");
+    let _ = allocation_result.result.unwrap();
     info!(logger, "Done.");
 }

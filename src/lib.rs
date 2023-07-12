@@ -1,22 +1,22 @@
 extern crate core;
 
-pub mod allocation;
 pub mod analysis;
+pub mod constraints;
 pub mod env;
+pub mod kelly_allocation;
 pub mod model;
 pub mod utils;
 pub mod validation;
 
-use crate::allocation::{kelly_allocate, MAX_ITER};
 use crate::analysis::{all_outcomes, worst_case_outcome};
 use crate::analysis::{cumulative_probability_of_loss, expected_return};
 use crate::env::get_project_dir;
+use crate::kelly_allocation::{KellyAllocator, MAX_ITER};
 use crate::model::company::Company;
 use crate::model::errors::Error;
-use crate::model::portfolio::{Portfolio, PortfolioCandidates};
+use crate::model::portfolio::{AllocationInput, Portfolio};
 use crate::model::responses::{
-    AllocationResponse, AllocationResult, AnalysisResponse, AnalysisResult, ProbabilityAndReturn,
-    TickerAndFraction,
+    AllocationResponse, AllocationResult, AnalysisResponse, AnalysisResult, TickerAndFraction,
 };
 use crate::validation::result::Severity::ERROR;
 use crate::validation::result::ValidationResult;
@@ -70,7 +70,8 @@ pub async fn openapi(_rqctx: RequestContext<()>) -> Result<Response<Body>, HttpE
         .body(index.into())?)
 }
 
-/// Calculate optimal allocation of capital for a set of candidate companies.
+/// Calculate optimal allocation of capital for a set of candidate companies with an optional
+/// constraint representing aversion to the permanent loss of capital
 #[endpoint {
     method = POST,
     path = "/allocate",
@@ -78,7 +79,7 @@ pub async fn openapi(_rqctx: RequestContext<()>) -> Result<Response<Body>, HttpE
 }]
 pub async fn allocate_endpoint(
     rqctx: RequestContext<()>,
-    body: TypedBody<PortfolioCandidates>,
+    body: TypedBody<AllocationInput>,
 ) -> Result<HttpResponseOk<AllocationResponse>, HttpError> {
     allocate(body.into_inner(), &rqctx.log)
 }
@@ -97,15 +98,12 @@ pub async fn analyze_endpoint(
 }
 
 /// Validate the candidates and return all problematic validations
-pub fn validate(
-    portfolio_candidates: &PortfolioCandidates,
-    logger: &Logger,
-) -> Vec<ValidationResult> {
+pub fn validate(portfolio_candidates: &AllocationInput, logger: &Logger) -> Vec<ValidationResult> {
     info!(logger, "Performing validation of portfolio candidates.");
     let mut all_validation_results: HashSet<ValidationResult> = HashSet::new();
 
     portfolio_candidates
-        .companies
+        .candidates
         .iter()
         .for_each(|c| all_validation_results.extend(c.validate()));
 
@@ -126,13 +124,13 @@ pub fn validate(
 
 /// Calculates optimal allocation for each candidate company
 pub fn allocate(
-    portfolio_candidates: PortfolioCandidates,
+    allocation_input: AllocationInput,
     logger: &Logger,
 ) -> Result<HttpResponseOk<AllocationResponse>, HttpError> {
     info!(logger, "Started allocation.");
 
     // Return immediately if there is at least one validation error
-    let validation_problems: Vec<ValidationResult> = validate(&portfolio_candidates, logger);
+    let validation_problems: Vec<ValidationResult> = validate(&allocation_input, logger);
     if validation_problems.iter().any(|v| match v {
         ValidationResult::PROBLEM(p) => p.severity == ERROR,
         ValidationResult::OK => false,
@@ -154,7 +152,7 @@ pub fn allocate(
         "Start filtering candidates that would produce undesirable results."
     );
     let mut filtered_candidates: Vec<Company> = vec![];
-    portfolio_candidates.companies.into_iter().for_each(|c| {
+    allocation_input.candidates.into_iter().for_each(|c| {
         let downside_validation = c.validate_no_downside_scenario();
         match &downside_validation {
             ValidationResult::PROBLEM(problem) => info!(logger, "{}", problem.message),
@@ -198,7 +196,8 @@ pub fn allocate(
         "Calculating the optimal allocation for {} candidates.",
         filtered_candidates.len()
     );
-    let portfolio = match kelly_allocate(filtered_candidates, MAX_ITER, logger) {
+    let kelly_allocator = KellyAllocator::new(logger, MAX_ITER);
+    let portfolio = match kelly_allocator.allocate(filtered_candidates) {
         Ok(p) => p,
         Err(e) => {
             return Ok(HttpResponseOk(AllocationResponse {
@@ -237,7 +236,7 @@ pub fn allocate(
             }));
         }
     };
-    let worst_case = worst_case_outcome(&all_outcomes, logger);
+    let worst_case = worst_case_outcome(&portfolio, logger);
 
     info!(
         logger,
@@ -247,10 +246,7 @@ pub fn allocate(
         result: Some(AllocationResult {
             allocations: allocation_result,
             analysis: AnalysisResult {
-                worst_case_outcome: ProbabilityAndReturn {
-                    probability: worst_case.probability,
-                    weighted_return: worst_case.weighted_return,
-                },
+                worst_case_outcome: worst_case,
                 cumulative_probability_of_loss: cumulative_probability_of_loss(
                     &all_outcomes,
                     logger,
@@ -285,15 +281,12 @@ pub fn analyze(
             }));
         }
     };
-    let worst_case = worst_case_outcome(&all_outcomes, logger);
+    let worst_case = worst_case_outcome(&portfolio, logger);
 
     info!(logger, "Analysis complete, returning.");
     Ok(HttpResponseOk(AnalysisResponse {
         result: Some(AnalysisResult {
-            worst_case_outcome: ProbabilityAndReturn {
-                probability: worst_case.probability,
-                weighted_return: worst_case.weighted_return,
-            },
+            worst_case_outcome: worst_case,
             cumulative_probability_of_loss: cumulative_probability_of_loss(&all_outcomes, logger),
             expected_return: expected_return(&portfolio, logger),
         }),

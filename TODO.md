@@ -32,6 +32,7 @@ Future improvements:
 - [x] Improve test coverage
 - [x] Create config file for server config
 - [x] Build docker image and push to gitlab registry
+- [ ] Update README.md w.r.t. constraints
 - [ ] Figure out how to add basic validations to OpenAPI schema via schemars
 - [ ] API trait with controller and http client
 - [ ] Command line interface
@@ -39,7 +40,7 @@ Future improvements:
 - [ ] Add renovate bot
 
 Future features:
-- [ ] Constraint for maximum allowable risk of permanent loss of capital
+- [x] Constraint for maximum allowable risk of permanent loss of capital
 - [ ] Constraint for no leverage (instead of normalization)
 - [ ] Constraint for no shorting (instead of filtering based on negative expected value)
 - [ ] Simulation of different outcomes to gauge how the assumption of infinite bets holds for a representative example
