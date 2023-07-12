@@ -3,8 +3,10 @@ use crate::model::portfolio::Portfolio;
 use nalgebra::DVector;
 use ordered_float::OrderedFloat;
 
-/// [CapitalLossConstraint] implements the [InequalityConstraint] interface that provides matrix
-/// contributions to the Kelly allocation problem, both for inactive and active variants.
+/// [CapitalLossConstraint] that puts an upper bound on the permanent loss of capital the investor
+/// is comfortable with. It essentially limits the fractions such that the probability-weighted
+/// worst-case scenario doesn't exceed the specified value.
+/// TODO: Fields can be represented into a single number.
 #[derive(Debug)]
 pub struct CapitalLossConstraint {
     pub fraction_of_capital: f64,
@@ -45,9 +47,5 @@ impl Constraint for CapitalLossConstraint {
             .sum::<f64>()
             - self.probability_of_loss * self.fraction_of_capital
             + slack_variable
-    }
-
-    fn is_satisfied(&self, portfolio: &Portfolio) -> bool {
-        self.function_value(portfolio, 0.0) <= 0.0
     }
 }

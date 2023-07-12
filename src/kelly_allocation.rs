@@ -12,6 +12,7 @@ use slog::{info, Logger};
 use crate::analysis::{all_outcomes, worst_case_outcome, Outcome};
 use crate::constraints::capital_loss_constraint::CapitalLossConstraint;
 use crate::constraints::constraint::InequalityConstraint;
+use crate::constraints::no_shorting_constraint::NoShortingConstraint;
 use crate::model::capital_loss::CapitalLoss;
 use crate::model::company::{Company, TOLERANCE};
 use crate::model::errors::Error;
@@ -47,6 +48,48 @@ impl<'a> KellyAllocator<'a> {
         }
     }
 
+    /// Return a new [KellyAllocator] with a constraint for no shorting, for all company candidates.
+    /// The contents of the original object are moved into the new one. Panics in case a single
+    /// constraint of this type is already present.
+    pub fn with_no_shorting_constraint(self, n_candidates: usize) -> KellyAllocator<'a> {
+        info!(
+            self.logger,
+            "Setting no shorting constraints for all of the {n_candidates}."
+        );
+
+        if n_candidates < 1 {
+            panic!("Can't make sense of no shorting constraints because there are {n_candidates} candidates.")
+        }
+
+        // Fractions are always the first set of unknowns in the system.
+        let no_shorting_constraints: Vec<Box<dyn InequalityConstraint>> = (0..n_candidates)
+            .map(|i| {
+                Box::new(NoShortingConstraint { fraction_index: i })
+                    as Box<dyn InequalityConstraint>
+            })
+            .collect();
+
+        if self
+            .inequality_constraints
+            .iter()
+            .any(|c| c.type_id() == no_shorting_constraints[0].type_id())
+        {
+            panic!(
+                "Kelly allocator already initialized with no shorting constraints. Did you call \
+                with_no_shorting_constraint twice?"
+            )
+        }
+
+        let mut new_constraints = self.inequality_constraints;
+        new_constraints.extend(no_shorting_constraints);
+
+        KellyAllocator {
+            logger: self.logger,
+            max_iter: self.max_iter,
+            inequality_constraints: new_constraints,
+        }
+    }
+
     /// Return a new [KellyAllocator] with a constraint for maximum permanent loss of capital.
     /// The contents of the original object are moved into the new one. Panics in case a constraint
     /// is already present. Panics in case we already have a constraint of this type.
@@ -58,7 +101,10 @@ impl<'a> KellyAllocator<'a> {
             fraction_of_capital: max_permanent_loss_constraint.fraction_of_capital,
             probability_of_loss: max_permanent_loss_constraint.probability_of_loss,
         });
-        info!(self.logger, "{:?}", max_permanent_loss_constraint);
+        info!(
+            self.logger,
+            "Setting maximum permanent loss constraint: {:?}", max_permanent_loss_constraint
+        );
 
         if self
             .inequality_constraints
