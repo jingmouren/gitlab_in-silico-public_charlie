@@ -17,7 +17,7 @@ COPY ./Cargo.toml ./Cargo.toml
 RUN cargo build --release
 RUN rm -rf target/release/*charlie* target/release/deps/*charlie* target/release/.fingerprint/*charlie*
 
-# Copy everything and build the whole project
+# Copy everything that's needed
 COPY src src
 COPY examples examples
 COPY schema schema
@@ -28,7 +28,7 @@ RUN cargo build --release
 RUN cargo build --example allocate_client --example analyze_client --example api_client --release
 
 # STAGE 2: FINAL image
-FROM debian:buster-slim as FINAL
+FROM debian:bullseye-slim as FINAL
 RUN apt-get update && apt-get install -y tzdata ca-certificates && rm -rf /var/lib/apt/lists/*
 
 # Expose port 8000, which will be exposed to the outside when running the container

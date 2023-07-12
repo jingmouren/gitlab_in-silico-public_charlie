@@ -39,7 +39,8 @@ tool won't allow you to:
 Calculating intrinsic value of a company is more of an art than science, especially for a high-quality, growing
 businesses within your circle of competence. And according to Charlie Munger, Warren Buffett, Mohnish Pabrai and the
 like, one should focus precisely on getting such great businesses for a fair price. That means that you shouldn't take
-what this tool says at face value, and you should probably use its guidance infrequently.
+what this tool says at fa
+ce value, and you should probably use its guidance infrequently.
 
 During the mathematical derivation of the problem (optimizing long-term growth rate), an assumption is made that the
 number of similar bets with similar outcomes is very high (tends to infinity). I don't have a hard mathematical proof
@@ -87,7 +88,8 @@ Project structure follows the recommended practices for `rust` projects:
   - Unit tests are separate modules in the same source files that they're testing
 - `src/bin` directory contains two binaries: one for generating the OpenAPI schema and one for running a server
 - `tests` directory contains integration tests
-- `examples` directory contains examples on client-side use for all endpoints/functionality
+- `examples` directory contains examples on cli
+- ent-side use for all endpoints/functionality
 
 ### Execution
 
@@ -106,7 +108,8 @@ running the server with two client examples inside Docker containers. See `.gitl
 
 ### OpenAPI schema update
 
-In order to update the OpenAPI schema (after introducing changes to the request/response payloads), do the following:
+In order to update the OpenAPI schema (after introducing changes to the API, which include request/response payloads
+and endpoints), do the following:
 - Generate the schema: `cargo run --bin generate_schema`
 
 After generating the JSON schema, the application also calls `npx` to generate new index.html based on the schema. 

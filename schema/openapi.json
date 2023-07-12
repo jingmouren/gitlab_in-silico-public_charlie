@@ -13,8 +13,31 @@
       }
     },
     "schemas": {
+      "AllocationInput": {
+        "description": "Allocation input consists of a list of candidate companies and additional settings",
+        "properties": {
+          "candidates": {
+            "items": {
+              "$ref": "#/components/schemas/Company"
+            },
+            "type": "array"
+          },
+          "max_permanent_loss_of_capital": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CapitalLoss"
+              }
+            ],
+            "nullable": true
+          }
+        },
+        "required": [
+          "candidates"
+        ],
+        "type": "object"
+      },
       "AllocationResponse": {
-        "description": "Response of the call to the allocate endpoint, contains results of both allocation and analysis",
+        "description": "Response of the call to the allocate endpoint, contains results of both allocation and analysis.",
         "properties": {
           "error": {
             "allOf": [
@@ -43,7 +66,7 @@
         "type": "object"
       },
       "AllocationResult": {
-        "description": "Allocation result includes tickers and their fractions",
+        "description": "Allocation result includes tickers and their fractions.",
         "properties": {
           "allocations": {
             "items": {
@@ -62,7 +85,7 @@
         "type": "object"
       },
       "AnalysisResponse": {
-        "description": "Response of the call to the analyze endpoint",
+        "description": "Response of the call to the analyze endpoint.",
         "properties": {
           "error": {
             "allOf": [
@@ -84,7 +107,7 @@
         "type": "object"
       },
       "AnalysisResult": {
-        "description": "Analysis result includes some statistics for a given portfolio",
+        "description": "Analysis result includes some statistics for a given portfolio.",
         "properties": {
           "cumulative_probability_of_loss": {
             "format": "double",
@@ -95,13 +118,31 @@
             "type": "number"
           },
           "worst_case_outcome": {
-            "$ref": "#/components/schemas/ProbabilityAndReturn"
+            "$ref": "#/components/schemas/ProbabilityAndReturns"
           }
         },
         "required": [
           "cumulative_probability_of_loss",
           "expected_return",
           "worst_case_outcome"
+        ],
+        "type": "object"
+      },
+      "CapitalLoss": {
+        "description": "Loss of capital is defined by two numbers: probability of the loss happening and the amount lost. The data model is used in a constraint for modelling maximum allowable loss of capital. Both numbers should be between 0 and 1. This can be read as: \"I'm ok losing [fraction] of capital with probability of [probability].\"",
+        "properties": {
+          "fraction_of_capital": {
+            "format": "double",
+            "type": "number"
+          },
+          "probability_of_loss": {
+            "format": "double",
+            "type": "number"
+          }
+        },
+        "required": [
+          "fraction_of_capital",
+          "probability_of_loss"
         ],
         "type": "object"
       },
@@ -168,21 +209,6 @@
         ],
         "type": "object"
       },
-      "PortfolioCandidates": {
-        "description": "Portfolio candidates has a list of companies",
-        "properties": {
-          "companies": {
-            "items": {
-              "$ref": "#/components/schemas/Company"
-            },
-            "type": "array"
-          }
-        },
-        "required": [
-          "companies"
-        ],
-        "type": "object"
-      },
       "PortfolioCompany": {
         "description": "Portfolio company represents a company with an associated allocation fraction",
         "properties": {
@@ -200,21 +226,26 @@
         ],
         "type": "object"
       },
-      "ProbabilityAndReturn": {
-        "description": "Probability and return used to minimally represent an outcome",
+      "ProbabilityAndReturns": {
+        "description": "Probability and returns used to minimally represent an outcome.",
         "properties": {
+          "portfolio_return": {
+            "format": "double",
+            "type": "number"
+          },
           "probability": {
             "format": "double",
             "type": "number"
           },
-          "weighted_return": {
+          "probability_weighted_return": {
             "format": "double",
             "type": "number"
           }
         },
         "required": [
+          "portfolio_return",
           "probability",
-          "weighted_return"
+          "probability_weighted_return"
         ],
         "type": "object"
       },
@@ -239,7 +270,7 @@
         "type": "object"
       },
       "Scenario": {
-        "description": "A scenario is represented by an investment thesis, which can be boiled down to the expected intrinsic value and the estimated probability that this scenario will play out in the future",
+        "description": "A scenario is represented by an investment thesis, which can be boiled down to the expected intrinsic value and the estimated probability that this scenario will play out in the future.",
         "properties": {
           "intrinsic_value": {
             "format": "double",
@@ -269,7 +300,7 @@
         "type": "string"
       },
       "TickerAndFraction": {
-        "description": "A ticker and a fraction used for minimalistic representation of the allocation calculation",
+        "description": "A ticker and a fraction used for minimalistic representation of the allocation calculation.",
         "properties": {
           "fraction": {
             "format": "double",
@@ -318,12 +349,13 @@
   "paths": {
     "/allocate": {
       "post": {
+        "description": "constraint representing aversion to the permanent loss of capital",
         "operationId": "allocate_endpoint",
         "requestBody": {
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/PortfolioCandidates"
+                "$ref": "#/components/schemas/AllocationInput"
               }
             }
           },
@@ -347,7 +379,7 @@
             "$ref": "#/components/responses/Error"
           }
         },
-        "summary": "Calculate optimal allocation of capital for a set of candidate companies.",
+        "summary": "Calculate optimal allocation of capital for a set of candidate companies with an optional",
         "tags": [
           "allocate"
         ]

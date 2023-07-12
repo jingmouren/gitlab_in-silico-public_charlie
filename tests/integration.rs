@@ -1,7 +1,7 @@
-use charlie::allocation::{kelly_allocate, FRACTION_TOLERANCE, MAX_ITER};
 use charlie::env::create_test_logger;
+use charlie::kelly_allocation::{KellyAllocator, MAX_ITER, SOLVER_TOLERANCE};
 use charlie::model::errors::Error;
-use charlie::model::portfolio::PortfolioCandidates;
+use charlie::model::portfolio::AllocationInput;
 use charlie::model::responses::{AllocationResponse, AnalysisResponse, TickerAndFraction};
 use charlie::utils::assert_close;
 use charlie::validation::result::{Problem, Severity, ValidationResult};
@@ -9,10 +9,10 @@ use charlie::{allocate, analyze, validate};
 use slog::info;
 
 /// Make assertion tolerance the same as the fraction tolerance (no point in more accuracy)
-const ASSERTION_TOLERANCE: f64 = FRACTION_TOLERANCE;
+const ASSERTION_TOLERANCE: f64 = SOLVER_TOLERANCE;
 
 const TEST_YAML: &str = "
-          companies:
+          candidates:
           - name: A
             ticker: A
             description: Business A
@@ -119,99 +119,90 @@ const TEST_YAML: &str = "
 
 #[test]
 fn test_create_candidates_and_validate() {
-    let candidates: PortfolioCandidates = serde_yaml::from_str(&TEST_YAML.to_string()).unwrap();
+    let input: AllocationInput = serde_yaml::from_str(&TEST_YAML.to_string()).unwrap();
 
-    assert_eq!(candidates.companies.len(), 6);
+    assert_eq!(input.candidates.len(), 6);
 
     // First company
-    assert_eq!(candidates.companies[0].name, "A");
-    assert_eq!(candidates.companies[0].ticker, "A");
-    assert_eq!(candidates.companies[0].description, "Business A");
-    assert_eq!(candidates.companies[0].market_cap, 238.0e9);
+    assert_eq!(input.candidates[0].name, "A");
+    assert_eq!(input.candidates[0].ticker, "A");
+    assert_eq!(input.candidates[0].description, "Business A");
+    assert_eq!(input.candidates[0].market_cap, 238.0e9);
 
     // Scenarios for the first company
-    assert_eq!(candidates.companies[0].scenarios.len(), 4);
+    assert_eq!(input.candidates[0].scenarios.len(), 4);
     assert_eq!(
-        candidates.companies[0].scenarios[0].thesis,
+        input.candidates[0].scenarios[0].thesis,
         "Unexpected stuff happens"
     );
-    assert_eq!(candidates.companies[0].scenarios[0].intrinsic_value, 0.0);
-    assert_eq!(candidates.companies[0].scenarios[0].probability, 0.05);
+    assert_eq!(input.candidates[0].scenarios[0].intrinsic_value, 0.0);
+    assert_eq!(input.candidates[0].scenarios[0].probability, 0.05);
 
     assert_eq!(
-        candidates.companies[0].scenarios[1].thesis,
+        input.candidates[0].scenarios[1].thesis,
         "Core business keeps losing earnings power"
     );
-    assert_eq!(
-        candidates.companies[0].scenarios[1].intrinsic_value,
-        170.0e9
-    );
-    assert_eq!(candidates.companies[0].scenarios[1].probability, 0.3);
+    assert_eq!(input.candidates[0].scenarios[1].intrinsic_value, 170.0e9);
+    assert_eq!(input.candidates[0].scenarios[1].probability, 0.3);
 
     assert_eq!(
-        candidates.companies[0].scenarios[2].thesis,
+        input.candidates[0].scenarios[2].thesis,
         "Business doesn't grow, earnings kept flat"
     );
-    assert_eq!(
-        candidates.companies[0].scenarios[2].intrinsic_value,
-        270.0e9
-    );
-    assert_eq!(candidates.companies[0].scenarios[2].probability, 0.5);
+    assert_eq!(input.candidates[0].scenarios[2].intrinsic_value, 270.0e9);
+    assert_eq!(input.candidates[0].scenarios[2].probability, 0.5);
 
     assert_eq!(
-        candidates.companies[0].scenarios[3].thesis,
+        input.candidates[0].scenarios[3].thesis,
         "Earnings grow slightly"
     );
-    assert_eq!(
-        candidates.companies[0].scenarios[3].intrinsic_value,
-        360.0e9
-    );
-    assert_eq!(candidates.companies[0].scenarios[3].probability, 0.15);
+    assert_eq!(input.candidates[0].scenarios[3].intrinsic_value, 360.0e9);
+    assert_eq!(input.candidates[0].scenarios[3].probability, 0.15);
 
     // Last company
-    assert_eq!(candidates.companies[5].name, "F");
-    assert_eq!(candidates.companies[5].ticker, "F");
-    assert_eq!(candidates.companies[5].description, "Business F");
-    assert_eq!(candidates.companies[5].market_cap, 17.6e6);
+    assert_eq!(input.candidates[5].name, "F");
+    assert_eq!(input.candidates[5].ticker, "F");
+    assert_eq!(input.candidates[5].description, "Business F");
+    assert_eq!(input.candidates[5].market_cap, 17.6e6);
 
     // Scenarios for the last company
-    assert_eq!(candidates.companies[5].scenarios.len(), 3);
+    assert_eq!(input.candidates[5].scenarios.len(), 3);
     assert_eq!(
-        candidates.companies[5].scenarios[0].thesis,
+        input.candidates[5].scenarios[0].thesis,
         "They don't manage to liquidate and just lose all the money"
     );
-    assert_eq!(candidates.companies[5].scenarios[0].intrinsic_value, 0.0);
-    assert_eq!(candidates.companies[5].scenarios[0].probability, 0.05);
+    assert_eq!(input.candidates[5].scenarios[0].intrinsic_value, 0.0);
+    assert_eq!(input.candidates[5].scenarios[0].probability, 0.05);
 
     assert_eq!(
-        candidates.companies[5].scenarios[1].thesis,
+        input.candidates[5].scenarios[1].thesis,
         "They liquidate without realizing assets in escrow account, assuming significant quarterly \
         cash loss until liquidation\n"
     );
-    assert_eq!(candidates.companies[5].scenarios[1].intrinsic_value, 10.0e6);
-    assert_eq!(candidates.companies[5].scenarios[1].probability, 0.25);
+    assert_eq!(input.candidates[5].scenarios[1].intrinsic_value, 10.0e6);
+    assert_eq!(input.candidates[5].scenarios[1].probability, 0.25);
 
     assert_eq!(
-        candidates.companies[5].scenarios[2].thesis,
+        input.candidates[5].scenarios[2].thesis,
         "They liquidate everything, assuming reasonable cash loss until liquidation"
     );
-    assert_eq!(candidates.companies[5].scenarios[2].intrinsic_value, 25.0e6);
-    assert_eq!(candidates.companies[5].scenarios[2].probability, 0.7);
+    assert_eq!(input.candidates[5].scenarios[2].intrinsic_value, 25.0e6);
+    assert_eq!(input.candidates[5].scenarios[2].probability, 0.7);
 
     // Assert that there are no validation issues
     let logger = create_test_logger();
-    let validation_errors: Vec<ValidationResult> = validate(&candidates, &logger);
+    let validation_errors: Vec<ValidationResult> = validate(&input, &logger);
     assert_eq!(validation_errors, vec![]);
 }
 
 #[test]
 fn test_allocate_with_validation_problems() {
     // Change the probability of the first scenario from 0.05 to 0.03
-    let mut candidates: PortfolioCandidates = serde_yaml::from_str(&TEST_YAML.to_string()).unwrap();
-    candidates.companies[0].scenarios[0].probability = 0.03;
+    let mut input: AllocationInput = serde_yaml::from_str(&TEST_YAML.to_string()).unwrap();
+    input.candidates[0].scenarios[0].probability = 0.03;
 
     let logger = create_test_logger();
-    let allocation_response: AllocationResponse = allocate(candidates, &logger).unwrap().0;
+    let allocation_response: AllocationResponse = allocate(input, &logger).unwrap().0;
 
     assert!(allocation_response.error.is_none());
     assert!(allocation_response.result.is_none());
@@ -231,26 +222,26 @@ fn test_allocate_with_validation_problems() {
 fn test_allocate_with_no_candidates_after_filtering() {
     // Keep only two candidates and change the numbers such that one has negative expected return
     // and the other has no downside scenario
-    let mut candidates: PortfolioCandidates = serde_yaml::from_str(&TEST_YAML.to_string()).unwrap();
-    candidates.companies.pop();
-    candidates.companies.pop();
-    candidates.companies.pop();
-    candidates.companies.pop();
+    let mut input: AllocationInput = serde_yaml::from_str(&TEST_YAML.to_string()).unwrap();
+    input.candidates.pop();
+    input.candidates.pop();
+    input.candidates.pop();
+    input.candidates.pop();
 
     // Swap probabilities of a worst-case scenario and base case scenario such that the expected
     // outcome is negative, for the first company
-    candidates.companies[0].scenarios[0].probability = 0.5;
-    candidates.companies[0].scenarios[2].probability = 0.05;
+    input.candidates[0].scenarios[0].probability = 0.5;
+    input.candidates[0].scenarios[2].probability = 0.05;
 
     // Remove first two (negative outcome) scenarios for the second company, and make the third one
     // have 100% probability
-    candidates.companies[1].scenarios.remove(0);
-    candidates.companies[1].scenarios.remove(0);
-    candidates.companies[1].scenarios[0].probability = 1.0;
+    input.candidates[1].scenarios.remove(0);
+    input.candidates[1].scenarios.remove(0);
+    input.candidates[1].scenarios[0].probability = 1.0;
 
     // Allocate and assert that we got an error
     let logger = create_test_logger();
-    let allocation_response: AllocationResponse = allocate(candidates, &logger).unwrap().0;
+    let allocation_response: AllocationResponse = allocate(input, &logger).unwrap().0;
 
     assert!(allocation_response.result.is_none());
 
@@ -288,51 +279,47 @@ fn test_allocate_with_no_candidates_after_filtering() {
 
 #[test]
 fn test_allocate_case_that_does_not_converge() {
-    let mut candidates: PortfolioCandidates = serde_yaml::from_str(&TEST_YAML.to_string()).unwrap();
+    let mut input: AllocationInput = serde_yaml::from_str(&TEST_YAML.to_string()).unwrap();
 
     // Remove first scenario such that we're left with only two of them
-    candidates.companies[5].scenarios.remove(0);
+    input.candidates[5].scenarios.remove(0);
 
     // Make the first scenario very unlikely with extremely small downside
-    candidates.companies[5].scenarios[0].probability = 1e-3;
-    candidates.companies[5].scenarios[0].intrinsic_value =
-        0.99 * candidates.companies[5].market_cap;
+    input.candidates[5].scenarios[0].probability = 1e-3;
+    input.candidates[5].scenarios[0].intrinsic_value = 0.99 * input.candidates[5].market_cap;
 
     // Make the second scenario very likely with extremely large upside
-    candidates.companies[5].scenarios[1].probability = 1.0 - 1e-3;
-    candidates.companies[5].scenarios[1].intrinsic_value =
-        100.0 * candidates.companies[5].market_cap;
+    input.candidates[5].scenarios[1].probability = 1.0 - 1e-3;
+    input.candidates[5].scenarios[1].intrinsic_value = 100.0 * input.candidates[5].market_cap;
 
     let logger = create_test_logger();
-    let allocation_response: AllocationResponse = allocate(candidates, &logger).unwrap().0;
+    let allocation_response: AllocationResponse = allocate(input, &logger).unwrap().0;
     println!("{:?}", allocation_response);
 
     assert_eq!(allocation_response.validation_problems.unwrap(), vec![]);
     assert!(allocation_response.result.is_none());
 
-    assert_eq!(
-        allocation_response.error.unwrap(),
-        Error {
-            code: "nonlinear-loop-didnt-converge".to_string(),
-            message:
-                "Did not manage to find the numerical solution. This may happen if the input data \
-                would suggest a very strong bias towards a single/few investments. Check your \
-                input."
-                    .to_string(),
-        },
-    );
+    let err = allocation_response.error.unwrap();
+
+    assert_eq!(err.code, "did-not-find-a-single-viable-solution");
+    assert!(err
+        .message
+        .contains("Did not manage to find a single viable numerical solution."));
+    assert!(err
+        .message
+        .contains("Did not manage to find the numerical solution."));
 }
 
 #[test]
 fn test_allocate() {
     // Create candidates and validate them
     let logger = create_test_logger();
-    let candidates: PortfolioCandidates = serde_yaml::from_str(&TEST_YAML.to_string()).unwrap();
-    let validation_errors: Vec<ValidationResult> = validate(&candidates, &logger);
+    let input: AllocationInput = serde_yaml::from_str(&TEST_YAML.to_string()).unwrap();
+    let validation_errors: Vec<ValidationResult> = validate(&input, &logger);
     assert_eq!(validation_errors, vec![]);
 
     // Allocate
-    let portfolio: AllocationResponse = allocate(candidates, &logger).unwrap().0;
+    let portfolio: AllocationResponse = allocate(input, &logger).unwrap().0;
     let tickers_and_fractions: Vec<TickerAndFraction> = portfolio.result.unwrap().allocations;
 
     // Print out the result for convenience
@@ -340,42 +327,42 @@ fn test_allocate() {
 
     assert_eq!(tickers_and_fractions[0].ticker, "A".to_string());
     assert_close!(
-        0.066,
+        0.1420462,
         tickers_and_fractions[0].fraction,
         ASSERTION_TOLERANCE
     );
 
     assert_eq!(tickers_and_fractions[1].ticker, "B".to_string());
     assert_close!(
-        0.282,
+        0.6407610,
         tickers_and_fractions[1].fraction,
         ASSERTION_TOLERANCE
     );
 
     assert_eq!(tickers_and_fractions[2].ticker, "C".to_string());
     assert_close!(
-        0.259,
+        0.5871123,
         tickers_and_fractions[2].fraction,
         ASSERTION_TOLERANCE
     );
 
     assert_eq!(tickers_and_fractions[3].ticker, "D".to_string());
     assert_close!(
-        0.102,
+        0.2316455,
         tickers_and_fractions[3].fraction,
         ASSERTION_TOLERANCE
     );
 
     assert_eq!(tickers_and_fractions[4].ticker, "E".to_string());
     assert_close!(
-        0.136,
+        0.3010064,
         tickers_and_fractions[4].fraction,
         ASSERTION_TOLERANCE
     );
 
     assert_eq!(tickers_and_fractions[5].ticker, "F".to_string());
     assert_close!(
-        0.154,
+        0.3498925,
         tickers_and_fractions[5].fraction,
         ASSERTION_TOLERANCE
     );
@@ -385,12 +372,14 @@ fn test_allocate() {
 fn test_analyze() {
     // Create candidates and validate them
     let logger = create_test_logger();
-    let candidates: PortfolioCandidates = serde_yaml::from_str(&TEST_YAML.to_string()).unwrap();
-    let validation_errors: Vec<ValidationResult> = validate(&candidates, &logger);
+    let input: AllocationInput = serde_yaml::from_str(&TEST_YAML.to_string()).unwrap();
+    let validation_errors: Vec<ValidationResult> = validate(&input, &logger);
     assert_eq!(validation_errors, vec![]);
 
     // Allocate and analyze
-    let portfolio = kelly_allocate(candidates.companies, MAX_ITER, &logger).unwrap();
+    let portfolio = KellyAllocator::new(&logger, MAX_ITER)
+        .allocate(input.candidates)
+        .unwrap();
     let analysis_response: AnalysisResponse = analyze(portfolio, &logger).unwrap().0;
     let analysis_result = analysis_response.result.unwrap();
 
@@ -398,19 +387,30 @@ fn test_analyze() {
     info!(logger, "{:?}", analysis_result);
 
     assert_close!(
-        3.125e-7,
+        9.375e-5,
         analysis_result.worst_case_outcome.probability,
         ASSERTION_TOLERANCE
     );
     assert_close!(
-        -0.944,
-        analysis_result.worst_case_outcome.weighted_return,
+        -1.608054,
+        analysis_result.worst_case_outcome.portfolio_return,
         ASSERTION_TOLERANCE
     );
     assert_close!(
-        0.19,
+        -0.234950,
+        analysis_result
+            .worst_case_outcome
+            .probability_weighted_return,
+        ASSERTION_TOLERANCE
+    );
+    assert_close!(
+        0.1896847,
         analysis_result.cumulative_probability_of_loss,
         ASSERTION_TOLERANCE
     );
-    assert_close!(0.484, analysis_result.expected_return, ASSERTION_TOLERANCE);
+    assert_close!(
+        1.0971964,
+        analysis_result.expected_return,
+        ASSERTION_TOLERANCE
+    );
 }

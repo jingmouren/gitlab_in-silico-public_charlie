@@ -1,3 +1,4 @@
+use crate::model::capital_loss::CapitalLoss;
 use crate::model::company::Company;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -15,8 +16,9 @@ pub struct PortfolioCompany {
     pub fraction: f64,
 }
 
-/// Portfolio candidates has a list of companies
+/// Allocation input consists of a list of candidate companies and additional settings
 #[derive(Serialize, Deserialize, JsonSchema, Clone, Debug)]
-pub struct PortfolioCandidates {
-    pub companies: Vec<Company>,
+pub struct AllocationInput {
+    pub candidates: Vec<Company>,
+    pub max_permanent_loss_of_capital: Option<CapitalLoss>,
 }
