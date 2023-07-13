@@ -12,7 +12,7 @@ use slog::{info, Logger};
 use crate::analysis::{all_outcomes, worst_case_outcome, Outcome};
 use crate::constraints::capital_loss_constraint::CapitalLossConstraint;
 use crate::constraints::constraint::InequalityConstraint;
-use crate::constraints::no_shorting_constraint::NoShortingConstraint;
+use crate::constraints::long_only_constraint::LongOnlyConstraint;
 use crate::model::capital_loss::CapitalLoss;
 use crate::model::company::{Company, TOLERANCE};
 use crate::model::errors::Error;
@@ -48,40 +48,39 @@ impl<'a> KellyAllocator<'a> {
         }
     }
 
-    /// Return a new [KellyAllocator] with a constraint for no shorting, for all company candidates.
-    /// The contents of the original object are moved into the new one. Panics in case a single
-    /// constraint of this type is already present.
-    pub fn with_no_shorting_constraint(self, n_candidates: usize) -> KellyAllocator<'a> {
+    /// Return a new [KellyAllocator] with a long-only constraint (no shorting), for all company
+    /// candidates. The contents of the original object are moved into the new one. Panics in case
+    /// a single constraint of this type is already present.
+    pub fn with_long_only_constraints(self, n_candidates: usize) -> KellyAllocator<'a> {
         info!(
             self.logger,
-            "Setting no shorting constraints for all of the {n_candidates}."
+            "Setting long only constraint for all of the {n_candidates}."
         );
 
         if n_candidates < 1 {
-            panic!("Can't make sense of no shorting constraints because there are {n_candidates} candidates.")
+            panic!("Got {n_candidates} candidates. Can't add long-only constraint.")
         }
 
         // Fractions are always the first set of unknowns in the system.
-        let no_shorting_constraints: Vec<Box<dyn InequalityConstraint>> = (0..n_candidates)
+        let long_only_constraints: Vec<Box<dyn InequalityConstraint>> = (0..n_candidates)
             .map(|i| {
-                Box::new(NoShortingConstraint { fraction_index: i })
-                    as Box<dyn InequalityConstraint>
+                Box::new(LongOnlyConstraint { fraction_index: i }) as Box<dyn InequalityConstraint>
             })
             .collect();
 
         if self
             .inequality_constraints
             .iter()
-            .any(|c| c.type_id() == no_shorting_constraints[0].type_id())
+            .any(|c| c.type_id() == long_only_constraints[0].type_id())
         {
             panic!(
-                "Kelly allocator already initialized with no shorting constraints. Did you call \
-                with_no_shorting_constraint twice?"
+                "Kelly allocator already initialized with long-only constraints. Did you call \
+                with_long_only_constraints twice?"
             )
         }
 
         let mut new_constraints = self.inequality_constraints;
-        new_constraints.extend(no_shorting_constraints);
+        new_constraints.extend(long_only_constraints);
 
         KellyAllocator {
             logger: self.logger,
