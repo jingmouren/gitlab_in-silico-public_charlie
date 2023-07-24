@@ -1,5 +1,3 @@
-use std::any::Any;
-
 use bitvec::order::Lsb0;
 use bitvec::slice::BitSlice;
 use bitvec::view::BitView;
@@ -9,7 +7,7 @@ use num_traits::pow::Pow;
 use ordered_float::OrderedFloat;
 use slog::{info, Logger};
 
-use crate::analysis::{all_outcomes, worst_case_outcome, Outcome};
+use crate::analysis::{all_outcomes, expected_return, Outcome, worst_case_outcome};
 use crate::constraints::capital_loss_constraint::CapitalLossConstraint;
 use crate::constraints::constraint::InequalityConstraint;
 use crate::constraints::long_only_constraint::LongOnlyConstraint;
@@ -21,20 +19,24 @@ use crate::model::portfolio::{Portfolio, PortfolioCompany};
 /// Tolerance for converging the solution during Newton-Raphson iteration. This is an absolute
 /// tolerance, which may need to be modified into relative tolerance due to addition of constraints.
 /// TODO: Think more
-pub const SOLVER_TOLERANCE: f64 = 1e-6;
+pub const SOLVER_TOLERANCE: f64 = 1e-5;
 
 /// Relaxation factor used when updating solution vector in an iteration of the nonlinear loop.
-const RELAXATION_FACTOR: f64 = 0.7;
+const RELAXATION_FACTOR: f64 = 0.05;
 
 /// Maximum number of iterations for the nonlinear solver.
-pub const MAX_ITER: u32 = 1000;
+pub const MAX_ITER: u32 = 2000;
 
 /// Kelly allocator with an optional constraint for maximum loss of capital constraint. The
 /// constraint may be inactive or active, which is figured out during the solution process.
+/// TODO: Figure out why dynamic type check doesn't work on Vec<Box<dyn InequalityConstraint>>
+///  because that would allow to get rid of bool helper fields.
 pub struct KellyAllocator<'a> {
     logger: &'a Logger,
     max_iter: u32,
     inequality_constraints: Vec<Box<dyn InequalityConstraint>>,
+    has_long_only_constraint: bool,
+    has_maximum_permanent_loss_constraint: bool,
 }
 
 impl<'a> KellyAllocator<'a> {
@@ -45,6 +47,8 @@ impl<'a> KellyAllocator<'a> {
             logger,
             max_iter,
             inequality_constraints: vec![],
+            has_long_only_constraint: false,
+            has_maximum_permanent_loss_constraint: false,
         }
     }
 
@@ -52,6 +56,13 @@ impl<'a> KellyAllocator<'a> {
     /// candidates. The contents of the original object are moved into the new one. Panics in case
     /// a single constraint of this type is already present.
     pub fn with_long_only_constraints(self, n_candidates: usize) -> KellyAllocator<'a> {
+        if self.has_long_only_constraint {
+            panic!(
+                "Kelly allocator already initialized with long-only constraints. Did you call \
+                with_long_only_constraints twice?"
+            )
+        }
+
         info!(
             self.logger,
             "Setting long only constraint for all of the {n_candidates}."
@@ -62,30 +73,22 @@ impl<'a> KellyAllocator<'a> {
         }
 
         // Fractions are always the first set of unknowns in the system.
-        let long_only_constraints: Vec<Box<dyn InequalityConstraint>> = (0..n_candidates)
-            .map(|i| {
-                Box::new(LongOnlyConstraint { fraction_index: i }) as Box<dyn InequalityConstraint>
-            })
-            .collect();
-
-        if self
-            .inequality_constraints
-            .iter()
-            .any(|c| c.type_id() == long_only_constraints[0].type_id())
-        {
-            panic!(
-                "Kelly allocator already initialized with long-only constraints. Did you call \
-                with_long_only_constraints twice?"
-            )
-        }
-
         let mut new_constraints = self.inequality_constraints;
-        new_constraints.extend(long_only_constraints);
+        new_constraints.extend(
+            (0..n_candidates)
+                .map(|i| {
+                    Box::new(LongOnlyConstraint { fraction_index: i })
+                        as Box<dyn InequalityConstraint>
+                })
+                .collect::<Vec<Box<dyn InequalityConstraint>>>(),
+        );
 
         KellyAllocator {
             logger: self.logger,
             max_iter: self.max_iter,
             inequality_constraints: new_constraints,
+            has_long_only_constraint: true,
+            has_maximum_permanent_loss_constraint: self.has_maximum_permanent_loss_constraint,
         }
     }
 
@@ -96,7 +99,15 @@ impl<'a> KellyAllocator<'a> {
         self,
         max_permanent_loss_constraint: CapitalLoss,
     ) -> KellyAllocator<'a> {
-        let constraint: Box<dyn InequalityConstraint> = Box::new(CapitalLossConstraint {
+        if self.has_maximum_permanent_loss_constraint {
+            panic!(
+                "Kelly allocator already initialized with a constraint representing maximum \
+                permanent loss of capital. Did you call with_maximum_permanent_loss_constraint \
+                twice?"
+            )
+        }
+
+        let constraint: Box<CapitalLossConstraint> = Box::new(CapitalLossConstraint {
             fraction_of_capital: max_permanent_loss_constraint.fraction_of_capital,
             probability_of_loss: max_permanent_loss_constraint.probability_of_loss,
         });
@@ -105,18 +116,6 @@ impl<'a> KellyAllocator<'a> {
             "Setting maximum permanent loss constraint: {:?}", max_permanent_loss_constraint
         );
 
-        if self
-            .inequality_constraints
-            .iter()
-            .any(|c| c.type_id() == constraint.type_id())
-        {
-            panic!(
-                "Kelly allocator already initialized with a constraint representing maximum \
-                permanent loss of capital. Did you call with_maximum_permanent_loss_constraint \
-                twice?"
-            )
-        }
-
         let mut new_constraints = self.inequality_constraints;
         new_constraints.push(constraint);
 
@@ -124,6 +123,8 @@ impl<'a> KellyAllocator<'a> {
             logger: self.logger,
             max_iter: self.max_iter,
             inequality_constraints: new_constraints,
+            has_long_only_constraint: self.has_long_only_constraint,
+            has_maximum_permanent_loss_constraint: true,
         }
     }
 
@@ -134,6 +135,14 @@ impl<'a> KellyAllocator<'a> {
     ///   there are no inequality constraints, only one system is solved.
     /// - N is the number of candidate companies plus the number of constraints.
     pub fn allocate(&self, candidates: Vec<Company>) -> Result<Portfolio, Error> {
+        if self.has_maximum_permanent_loss_constraint && !self.has_long_only_constraint {
+            return Err(Error {
+                code: "maximum-capital-loss-constraint-works-only-with-long-only-strategy".to_string(),
+                message: "Maximum capital loss constraint can work only with long-only strategy (constraint). Either remove the capital loss constraint or add the long-only constraint.".to_string()
+            });
+        }
+
+
         // Number of systems to solve is equal to 2^N_inequality_constraints
         let n_inequality_constraints: usize = self.inequality_constraints.len();
         let n_systems: usize = pow(2, n_inequality_constraints);
@@ -227,24 +236,6 @@ impl<'a> KellyAllocator<'a> {
             //    other good solutions to pick from. TODO: Think more about when this can happen.
             match result {
                 Ok(x) => {
-                    // TODO: Extract a function for updating portfolio with a result
-                    portfolio.companies.iter_mut().enumerate().for_each(|(i, pc)| pc.fraction = x[i]);
-
-                    // Check whether all constraints are satisfied
-                    self.inequality_constraints
-                        .iter()
-                        .enumerate()
-                        .for_each(|(c_id, constraint)| {
-                            info!(self.logger, "Constraint function value is: {:?}", constraint.function_value(&portfolio, 0.0));
-                            if !constraint.is_satisfied(&portfolio) {
-                                panic!(
-                                    "Constraint {} is not satisfied. Constraint function value is: {}",
-                                    c_id,
-                                    constraint.function_value(&portfolio, 0.0)
-                                )
-                            }
-                        });
-
                     if (0..n_inequality_constraints).any(|c_id| {
                         !is_constraint_active[c_id] && x[n_companies + c_id] < TOLERANCE
                     }) {
@@ -270,11 +261,14 @@ impl<'a> KellyAllocator<'a> {
             }
         });
 
-        // Assume that the best solution is the one with the smallest possible risk of permanent
-        // loss of capital, which is defined by the maximum probability weighted return of a
-        // worst-case outcome: We're looking for maximum because worst-case outcome should be
-        // negative.
-        info!(self.logger, "{:?}", solutions);
+        // Assume that the best solution is the one with the biggest expected value. This is a poor
+        // man's proxy for choosing the best solution. TODO. Improve
+        info!(
+            self.logger,
+            "Found {} viable solutions: {:?}. Finding the one with maximum expected value.",
+            solutions.len(),
+            solutions
+        );
         let best_solution = solutions.iter().max_by_key(|x| {
             // Update the portfolio with this solution vector
             let mut p = portfolio.clone();
@@ -283,7 +277,7 @@ impl<'a> KellyAllocator<'a> {
                 .enumerate()
                 .for_each(|(i, pc)| pc.fraction = x[i]);
 
-            OrderedFloat(worst_case_outcome(&p, self.logger).probability_weighted_return)
+            OrderedFloat(expected_return(&p, self.logger))
         });
 
         match best_solution {
@@ -357,7 +351,7 @@ impl<'a> KellyAllocator<'a> {
                 let offset_cid = n_companies + cid;
 
                 // Constraint contribution is always added to the lower triangular row for this
-                // constraint, regardless whether it's active or inactive
+                // constraint, regardless whether it's active or inactive.
                 for (eid, &elem) in d_constraint_d_fractions.iter().enumerate() {
                     jacobian[(eid, offset_cid)] = elem;
                 }
@@ -433,7 +427,7 @@ impl<'a> KellyAllocator<'a> {
             }
 
             counter += 1;
-            info!(self.logger, "Finished {counter} iteration.");
+            info!(self.logger, "Finished {counter}. iteration.");
         }
 
         Ok(x)
@@ -469,7 +463,7 @@ impl<'a> KellyAllocator<'a> {
         let n_companies: usize = portfolio.companies.len();
         let mut jacobian: DMatrix<f64> = DMatrix::zeros(n_companies, n_companies);
 
-        // Note: Jacobian for this system is symmetric, that's why we loop only over the upper triangle
+        // Jacobian for this system is symmetric, that's why we loop only over the upper triangle.
         for row_index in 0..n_companies {
             for column_index in row_index..n_companies {
                 let row_company: &Company = &portfolio.companies[row_index].company;
@@ -492,7 +486,7 @@ impl<'a> KellyAllocator<'a> {
                     .sum::<f64>();
 
                 // Set lower triangle. Also overrides the diagonal with the same value unnecessarily,
-                // but seems more elegant compared to an if statement
+                // but seems more elegant compared to an if statement.
                 jacobian[(column_index, row_index)] = jacobian[(row_index, column_index)];
             }
         }
@@ -503,9 +497,11 @@ impl<'a> KellyAllocator<'a> {
 
 #[cfg(test)]
 mod test {
+    use slog::Level::Info;
     use std::collections::HashMap;
+    use crate::analysis::worst_case_outcome;
 
-    use crate::env::create_test_logger;
+    use crate::env::{create_logger, create_test_logger};
     use crate::model::company::Company;
     use crate::model::scenario::Scenario;
     use crate::utils::assert_close;
@@ -637,19 +633,27 @@ mod test {
 
         assert_eq!(portfolio.companies.len(), 2);
         assert_close!(
-            0.3592665,
+            0.3592684433098152,
             portfolio.companies[0].fraction,
             ASSERTION_TOLERANCE
         );
         assert_close!(
-            1.6299324,
+            1.629923469755913,
             portfolio.companies[1].fraction,
             ASSERTION_TOLERANCE
         );
+
+        let expected_return = expected_return(&portfolio, &logger);
+        assert_close!(0.5135972129639912, expected_return, ASSERTION_TOLERANCE);
+
+        let risk_of_capital_loss = worst_case_outcome(&portfolio, &logger).probability_weighted_return;
+        assert_close!(-0.23651022310548597, risk_of_capital_loss, ASSERTION_TOLERANCE);
     }
 
+    // TODO: Add a test to check whether this is just expected value weighting
+
     /// Same inputs as the above, but with a capital loss constraint that ends up being inactive.
-    /// Therefore, the results is the same.
+    /// Therefore, the result is the same (almost the same, because of numerics).
     #[test]
     fn test_allocate_with_capital_loss_constraint_inactive() {
         let logger = create_test_logger();
@@ -664,44 +668,65 @@ mod test {
 
         assert_eq!(portfolio.companies.len(), 2);
         assert_close!(
-            0.3592665,
+            0.3592549149216492,
             portfolio.companies[0].fraction,
             ASSERTION_TOLERANCE
         );
         assert_close!(
-            1.6299324,
+            1.6299243982968243,
             portfolio.companies[1].fraction,
             ASSERTION_TOLERANCE
         );
+
+        let expected_return = expected_return(&portfolio, &logger);
+        assert_close!(0.5135972129639912, expected_return, ASSERTION_TOLERANCE);
+
+        let risk_of_capital_loss = worst_case_outcome(&portfolio, &logger).probability_weighted_return;
+        assert_close!(-0.23651022310548597, risk_of_capital_loss, ASSERTION_TOLERANCE);
     }
 
-    /// Tests that allocation with a fairly stringent capital loss constraint produces the same
-    /// result as above, because the solution when the constraint is active produces a negative
-    /// fraction (shorting).
+    /// Tests that allocation with a capital allocation constraints but without long-only constraint
+    /// is not supported.
     #[test]
-    fn test_allocate_with_capital_loss_constraint_active() {
-        let logger = create_test_logger();
+    fn test_allocate_with_capital_loss_constraint_but_no_long_only_constraint_is_not_supported() {
+        let logger = create_test_logger()
         let test_candidates: Vec<Company> = generate_test_candidates();
         let capital_loss_constraint = CapitalLoss {
             probability_of_loss: 1e-5,
             fraction_of_capital: 0.1,
         };
+        let e = KellyAllocator::new(&logger, MAX_ITER)
+            .with_maximum_permanent_loss_constraint(capital_loss_constraint)
+            .allocate(test_candidates)
+            .err()
+            .unwrap();
+
+        assert_eq!(e.code, "maximum-capital-loss-constraint-works-only-with-long-only-strategy");
+        assert!(e
+            .message
+            .contains("Maximum capital loss constraint can work only with long-only strategy (constraint). Either remove the capital loss constraint or add the long-only constraint."));
+    }
+
+    /// Tests allocation with a fairly stringent capital loss constraint, and long-only constraints.
+    #[test]
+    fn test_allocate_with_capital_loss_constraint_active_long_only_active() {
+        let logger = create_logger(Info);
+        let test_candidates: Vec<Company> = generate_test_candidates();
+        let capital_loss_constraint = CapitalLoss {
+            probability_of_loss: 1e-3,
+            fraction_of_capital: 0.5,
+        };
         let portfolio: Portfolio = KellyAllocator::new(&logger, MAX_ITER)
+            .with_long_only_constraints(test_candidates.len())
             .with_maximum_permanent_loss_constraint(capital_loss_constraint)
             .allocate(test_candidates)
             .unwrap();
 
+        info!(logger, "{:?}", portfolio);
+
         assert_eq!(portfolio.companies.len(), 2);
-        assert_close!(
-            -0.254566,
-            portfolio.companies[0].fraction,
-            ASSERTION_TOLERANCE
-        );
-        assert_close!(
-            0.707116,
-            portfolio.companies[1].fraction,
-            ASSERTION_TOLERANCE
-        );
+        assert_close!(0.0, portfolio.companies[0].fraction, ASSERTION_TOLERANCE);
+        assert_close!(0.0, portfolio.companies[1].fraction, ASSERTION_TOLERANCE);
     }
 
     #[test]

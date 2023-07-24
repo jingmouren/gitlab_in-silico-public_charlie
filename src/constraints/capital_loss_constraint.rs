@@ -6,7 +6,8 @@ use ordered_float::OrderedFloat;
 /// [CapitalLossConstraint] that puts an upper bound on the permanent loss of capital the investor
 /// is comfortable with. It essentially limits the fractions such that the probability-weighted
 /// worst-case scenario doesn't exceed the specified value.
-/// TODO: Fields can be represented into a single number.
+/// TODO: Fields can be represented into a single number and probably the name should be changed
+///  to CapitalLossRiskConstraint.
 #[derive(Debug)]
 pub struct CapitalLossConstraint {
     pub fraction_of_capital: f64,

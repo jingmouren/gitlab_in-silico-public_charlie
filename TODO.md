@@ -41,7 +41,7 @@ Future improvements:
 
 Future features:
 - [x] Constraint for maximum allowable risk of permanent loss of capital
-- [ ] Constraint for no leverage (instead of normalization)
 - [ ] Constraint for no shorting (instead of filtering based on negative expected value)
+- [ ] Constraint for no leverage (instead of normalization)
 - [ ] Simulation of different outcomes to gauge how the assumption of infinite bets holds for a representative example
       (e.g. someone adding assets to the portfolio every quarter or so for 30+ years) 

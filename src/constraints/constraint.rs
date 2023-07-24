@@ -1,15 +1,10 @@
 use crate::model::portfolio::Portfolio;
 use nalgebra::DVector;
 
-/// [InequalityConstraint] extends the [Constraint] interface, adding only a default function for
-/// checking whether the inequality constraint is satisfied
-pub trait InequalityConstraint: Constraint {
-    /// Whether this constraint is satisfied. Used to check whether we found a viable solution.
-    /// All inequality constraints have to be cast into this (not-greater than 0) form.
-    fn is_satisfied(&self, portfolio: &Portfolio) -> bool {
-        self.function_value(portfolio, 0.0) <= 0.0
-    }
-}
+/// [InequalityConstraint] extends the [Constraint] interface and is used for marking purposes only
+/// because each inequality constraint exponentially (power of two) increases the number of problems
+/// to solve, compared to the equality constraint which just adds an equation to the system.
+pub trait InequalityConstraint: Constraint {}
 
 /// TODO: Declare EqualityConstraint here when the time comes.
 
