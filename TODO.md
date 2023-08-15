@@ -1,47 +1,22 @@
 ## TODO
 
-Minimum:
-- [x] Calculation of expected value
-- [x] Calculation of probability of loss of capital
-- [x] Improve test coverage of company_returns field
-- [x] Allocation via Kelly's formula for multiple investments
-- [x] Integration tests
-- [x] Logging instead of printing
-- [x] Refactor validation
-- [x] Server POC
-- [x] Bring back integration tests
-- [x] Analysis endpoint
-- [x] Error handling
-- [x] Refactor data models: move them into appropriate modules and simplify composition
-- [x] Add warning if a company got filtered
-- [x] Add filtering for companies without downside
-- [x] Run a server and post two examples in the pipeline
-- [x] Generate OpenAPI schema for input and output data models
-- [x] Move from rocket to dropshot
-- [x] Generate OpenAPI schema in dropshot
-- [x] Set-up logging
-- [x] Figure out how to serve Swagger UI
-
-Future improvements:
-- [x] Update README.md
-- [x] Rename the project
-- [x] Pass logging level to create_logger function to suppress logs in tests
-- [x] Write/find macro for assertion with tolerance
-- [x] Add a test for monitoring schema and index.html changes
-- [x] Consider adding a test for changes in index.html as well
-- [x] Improve test coverage
-- [x] Create config file for server config
-- [x] Build docker image and push to gitlab registry
-- [ ] Update README.md w.r.t. constraints
-- [ ] Figure out how to add basic validations to OpenAPI schema via schemars
-- [ ] API trait with controller and http client
+Minimum features for public release:
+- [ ] Update front-end with constraints and limits (maybe just limit to 3 companies to make it feasible)
+- [ ] Update the paper with constraints
 - [ ] Command line interface
-- [ ] Consider dependency injection for the Logger object that's passed around
+- [ ] Break-up the documentation into 4 sections following divio: Tutorials, How-To guides, Explanation, Reference
+
+Improvements:
 - [ ] Add renovate bot
+- [ ] Improve test coverage
+- [ ] Organize error codes in a centralized place since it's easier
+- [ ] API trait with controller and http client
+- [ ] Consider dependency injection for the Logger object that's passed around
+- [ ] Figure out how to add basic validations to OpenAPI schema via schemars
 
 Future features:
-- [x] Constraint for maximum allowable risk of permanent loss of capital
-- [ ] Constraint for no leverage (instead of normalization)
-- [ ] Constraint for no shorting (instead of filtering based on negative expected value)
-- [ ] Simulation of different outcomes to gauge how the assumption of infinite bets holds for a representative example
-      (e.g. someone adding assets to the portfolio every quarter or so for 30+ years) 
+- [ ] Parallelize the loop over all combinations of constraints
+- [ ] Simulation of different outcomes to:
+    * Gauge how the assumption of infinite bets holds for a representative example (e.g. someone adding assets to the
+      portfolio every quarter or so for 30+ years)
+    * If feasible, this is the right way to pick the best solution out of all viable solutions. 

@@ -14,7 +14,7 @@
     },
     "schemas": {
       "AllocationInput": {
-        "description": "Allocation input consists of a list of candidate companies and additional settings",
+        "description": "Allocation input consists of a list of candidate companies and additional constraints. Note that the constraints are optional because the deserialization default for Option is None.",
         "properties": {
           "candidates": {
             "items": {
@@ -22,13 +22,31 @@
             },
             "type": "array"
           },
+          "long_only": {
+            "default": null,
+            "nullable": true,
+            "type": "boolean"
+          },
+          "max_individual_allocation": {
+            "default": null,
+            "format": "double",
+            "nullable": true,
+            "type": "number"
+          },
           "max_permanent_loss_of_capital": {
             "allOf": [
               {
                 "$ref": "#/components/schemas/CapitalLoss"
               }
             ],
+            "default": null,
             "nullable": true
+          },
+          "max_total_leverage_ratio": {
+            "default": null,
+            "format": "double",
+            "nullable": true,
+            "type": "number"
           }
         },
         "required": [
@@ -195,7 +213,7 @@
         "type": "object"
       },
       "Portfolio": {
-        "description": "Portfolio has a list of portfolio companies",
+        "description": "Portfolio has a list of portfolio companies.",
         "properties": {
           "companies": {
             "items": {
@@ -210,7 +228,7 @@
         "type": "object"
       },
       "PortfolioCompany": {
-        "description": "Portfolio company represents a company with an associated allocation fraction",
+        "description": "Portfolio company represents a company with an associated allocation fraction.",
         "properties": {
           "company": {
             "$ref": "#/components/schemas/Company"

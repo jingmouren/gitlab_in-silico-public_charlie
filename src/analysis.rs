@@ -140,25 +140,24 @@ pub fn worst_case_outcome(portfolio: &Portfolio, logger: &Logger) -> Probability
             .company
             .scenarios
             .iter()
-            .min_by_key(|s| {
-                OrderedFloat(c.fraction * s.probability_weighted_return(c.company.market_cap))
-            })
+            .min_by_key(|s| OrderedFloat(s.probability_weighted_return(c.company.market_cap)))
             .unwrap_or_else(|| {
                 panic!(
                     "Did not manage to find worst-case scenario for the company {:?}.",
                     c.company.ticker
                 )
             });
-        let ret = c.fraction * worst_scenario.scenario_return(c.company.market_cap);
+        let weighted_return = c.fraction * worst_scenario.scenario_return(c.company.market_cap);
         worst_case_probability *= worst_scenario.probability;
-        worst_case_return += ret;
-        worst_case_probability_weighted_return += worst_scenario.probability * ret;
+        worst_case_return += weighted_return;
+        worst_case_probability_weighted_return += worst_scenario.probability * weighted_return;
     });
 
     info!(
         logger,
-        "Worst case outcome has a probability weighted return of {:.1}%, which implies permanent \
-        loss of {:.1}% of invested assets with probability {:.6}%.",
+        "Worst case outcome has a probability weighted return of {:.1}%. If this worst-case \
+        scenario happens, you would permanently lose {:.1}% of invested assets. The probability of \
+        such a worst-case event is {:.3}%.",
         100.0 * worst_case_probability_weighted_return,
         100.0 * worst_case_return,
         100.0 * worst_case_probability

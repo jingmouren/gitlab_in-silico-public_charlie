@@ -8,7 +8,7 @@ use charlie::validation::result::{Problem, Severity, ValidationResult};
 use charlie::{allocate, analyze, validate};
 use slog::info;
 
-/// Make assertion tolerance the same as the fraction tolerance (no point in more accuracy)
+/// Make assertion tolerance the same as the fraction tolerance (no point in more accuracy).
 const ASSERTION_TOLERANCE: f64 = SOLVER_TOLERANCE;
 
 const TEST_YAML: &str = "
@@ -277,6 +277,9 @@ fn test_allocate_with_no_candidates_after_filtering() {
     );
 }
 
+/// Tests a case that doesn't converge since we have a company which has two scenarios that would
+/// imply infinite leverage: One with extremely unlikely small downside and one with extremely
+/// likely large upside.
 #[test]
 fn test_allocate_case_that_does_not_converge() {
     let mut input: AllocationInput = serde_yaml::from_str(&TEST_YAML.to_string()).unwrap();
@@ -285,16 +288,15 @@ fn test_allocate_case_that_does_not_converge() {
     input.candidates[5].scenarios.remove(0);
 
     // Make the first scenario very unlikely with extremely small downside
-    input.candidates[5].scenarios[0].probability = 1e-3;
+    input.candidates[5].scenarios[0].probability = 1e-4;
     input.candidates[5].scenarios[0].intrinsic_value = 0.99 * input.candidates[5].market_cap;
 
     // Make the second scenario very likely with extremely large upside
-    input.candidates[5].scenarios[1].probability = 1.0 - 1e-3;
+    input.candidates[5].scenarios[1].probability = 1.0 - 1e-4;
     input.candidates[5].scenarios[1].intrinsic_value = 100.0 * input.candidates[5].market_cap;
 
     let logger = create_test_logger();
     let allocation_response: AllocationResponse = allocate(input, &logger).unwrap().0;
-    println!("{:?}", allocation_response);
 
     assert_eq!(allocation_response.validation_problems.unwrap(), vec![]);
     assert!(allocation_response.result.is_none());
@@ -310,6 +312,7 @@ fn test_allocate_case_that_does_not_converge() {
         .contains("Did not manage to find the numerical solution."));
 }
 
+/// Tests allocation for 6 candidate companies without constraints.
 #[test]
 fn test_allocate() {
     // Create candidates and validate them
@@ -322,7 +325,7 @@ fn test_allocate() {
     let portfolio: AllocationResponse = allocate(input, &logger).unwrap().0;
     let tickers_and_fractions: Vec<TickerAndFraction> = portfolio.result.unwrap().allocations;
 
-    // Print out the result for convenience
+    // Debug convenience: To see the output, use create_logger(Info) instead of create_test_logger()
     info!(logger, "{:?}", tickers_and_fractions);
 
     assert_eq!(tickers_and_fractions[0].ticker, "A".to_string());
@@ -368,6 +371,55 @@ fn test_allocate() {
     );
 }
 
+/// Tests allocation with all constraints, but only with three candidates because having more
+/// candidates grows exponentially in complexity when we have constraints. Having just three of them
+/// is enough for the integration test.
+#[test]
+fn test_allocate_with_constraints() {
+    // Create candidates and validate them
+    let logger = create_test_logger();
+    let test_input_with_constraints = "
+          long_only: true
+          max_permanent_loss_of_capital:
+              fraction_of_capital: 0.5
+              probability_of_loss: 0.2
+          max_individual_allocation: 0.3
+          max_total_leverage_ratio: 0.0
+    "
+    .to_string()
+        + TEST_YAML;
+
+    let mut input: AllocationInput = serde_yaml::from_str(&test_input_with_constraints).unwrap();
+    input.candidates.pop(); // Remove F candidate
+    input.candidates.pop(); // Remove E candidate
+    input.candidates.remove(0); // Remove A candidate
+
+    let validation_errors: Vec<ValidationResult> = validate(&input, &logger);
+    assert_eq!(validation_errors, vec![]);
+
+    // Allocate
+    let portfolio: AllocationResponse = allocate(input, &logger).unwrap().0;
+    let tickers_and_fractions: Vec<TickerAndFraction> = portfolio.result.unwrap().allocations;
+
+    // Debug convenience: To see the output, use create_logger(Info) instead of create_test_logger()
+    info!(logger, "{:?}", tickers_and_fractions);
+
+    assert_eq!(tickers_and_fractions[0].ticker, "B".to_string());
+    assert_close!(0.3, tickers_and_fractions[0].fraction, ASSERTION_TOLERANCE);
+
+    assert_eq!(tickers_and_fractions[1].ticker, "C".to_string());
+    assert_close!(0.3, tickers_and_fractions[1].fraction, ASSERTION_TOLERANCE);
+
+    assert_eq!(tickers_and_fractions[2].ticker, "D".to_string());
+    assert_close!(
+        0.240576,
+        tickers_and_fractions[2].fraction,
+        ASSERTION_TOLERANCE
+    );
+}
+
+/// Does the same allocation as in the [test_allocate] and asserts that the portfolio analysis
+/// (statistics) are correct.
 #[test]
 fn test_analyze() {
     // Create candidates and validate them
@@ -383,7 +435,7 @@ fn test_analyze() {
     let analysis_response: AnalysisResponse = analyze(portfolio, &logger).unwrap().0;
     let analysis_result = analysis_response.result.unwrap();
 
-    // Print out the result for convenience
+    // Debug convenience: To see the output, use create_logger(Info) instead of create_test_logger()
     info!(logger, "{:?}", analysis_result);
 
     assert_close!(

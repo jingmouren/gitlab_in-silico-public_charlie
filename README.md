@@ -27,8 +27,6 @@ There are certain things that the tool won't allow you to do, in order to provid
 tool won't allow you to:
 - Invest in companies that have negative expected return based on your inputs. In other words, it won't let you go
   short,
-- Use leverage, because you shouldn't be in a hurry to get rich, although purely mathematical solution would
-  oftentimes imply use of leverage,
 - Invest in companies that do not have a downside. If a company truly didn't have a downside, you should lever up
   infinitely and put all your assets into it, which is usually not a good idea unless you have a founder-like insight
   into a fairly predictable business, in which case you shouldn't need this tool. Note that these insights probably
@@ -39,17 +37,20 @@ tool won't allow you to:
 Calculating intrinsic value of a company is more of an art than science, especially for a high-quality, growing
 businesses within your circle of competence. And according to Charlie Munger, Warren Buffett, Mohnish Pabrai and the
 like, one should focus precisely on getting such great businesses for a fair price. That means that you shouldn't take
-what this tool says at fa
-ce value, and you should probably use its guidance infrequently.
+what this tool says at face value, and you should probably use its guidance infrequently.
 
 During the mathematical derivation of the problem (optimizing long-term growth rate), an assumption is made that the
 number of similar bets with similar outcomes is very high (tends to infinity). I don't have a hard mathematical proof
 that this is completely ok for a focused investment strategy, although I feel confident it is ok iff one considers the
 following margins of safety:
-1. No shorting allowed,
-2. No use of leverage allowed,
+1. Avoid shorting by using the "long only" constraint,
+2. Avoid excessive use of leverage by specifying the maximum total leverage ratio close to zero (leverage ratio here is 
+   defined as the leverage divided by liquid assets to allocate),
 3. No companies without at least one downside scenario are allowed,
-4. And by far most importantly, conservative input assumptions should be provided. This is the tricky part, because this
+4. Specifying maximum permanent loss of capital you are comfortable with, defined by the probability of the worst case
+   outcome happening multiplied with the money you'll be comfortable loosing (e.g. "I'm ok to permanently lose 50% of
+   the capital with probability of 0.1%"),
+5. And by far most importantly, conservative input assumptions should be provided. This is the tricky part, because this
    tool unfortunately can't protect you from yourself.
 
 ## Documentation
@@ -98,6 +99,7 @@ Project structure follows the recommended practices for `rust` projects:
   - After the server is up and running, you can try running the two clients in `examples`:
     - `cargo run --example allocate_client`
     - `cargo run --example analyze_client`
+    - `cargo run --example api_client`
 
 Server can also be run within a Docker container: `docker run --network="host" -v ${pwd}:/usr/src/charlie registry.gitlab.com/in-silico-team/charlie:latest`
 
@@ -118,5 +120,5 @@ After generating the JSON schema, the application also calls `npx` to generate n
 
 To run both unit and integration tests with coverage, do:
 - `cargo test`
-- `cargo tarpaulin --ignore-tests`
+- `cargo tarpaulin --ignore-tests --timeout 120`
 
