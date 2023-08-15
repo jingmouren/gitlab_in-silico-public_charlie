@@ -97,15 +97,10 @@ pub async fn analyze_endpoint(
     analyze(body.into_inner(), &rqctx.log)
 }
 
-/// Validate the candidates and return all problematic validations
+/// Validate the candidates and return all problematic validations.
 pub fn validate(portfolio_candidates: &AllocationInput, logger: &Logger) -> Vec<ValidationResult> {
     info!(logger, "Performing validation of portfolio candidates.");
-    let mut all_validation_results: HashSet<ValidationResult> = HashSet::new();
-
-    portfolio_candidates
-        .candidates
-        .iter()
-        .for_each(|c| all_validation_results.extend(c.validate()));
+    let all_validation_results: HashSet<ValidationResult> = portfolio_candidates.validate();
 
     // Remove OK validation result and return
     let validation_problems: Vec<ValidationResult> = all_validation_results
@@ -196,7 +191,30 @@ pub fn allocate(
         "Calculating the optimal allocation for {} candidates.",
         filtered_candidates.len()
     );
-    let kelly_allocator = KellyAllocator::new(logger, MAX_ITER);
+    let mut kelly_allocator = KellyAllocator::new(logger, MAX_ITER);
+
+    // Add constraints if present
+    if allocation_input.long_only.unwrap_or(false) {
+        kelly_allocator = kelly_allocator.with_long_only_constraints(filtered_candidates.len());
+    }
+
+    if allocation_input.max_permanent_loss_of_capital.is_some() {
+        let lc = allocation_input.max_permanent_loss_of_capital.unwrap();
+        kelly_allocator = kelly_allocator.with_maximum_permanent_loss_constraint(lc);
+    }
+
+    if allocation_input.max_individual_allocation.is_some() {
+        let max_f = allocation_input.max_individual_allocation.unwrap();
+        kelly_allocator = kelly_allocator
+            .with_maximum_individual_allocation_constraint(filtered_candidates.len(), max_f);
+    }
+
+    if allocation_input.max_total_leverage_ratio.is_some() {
+        let max_lr = allocation_input.max_total_leverage_ratio.unwrap();
+        kelly_allocator = kelly_allocator
+            .with_maximum_total_leverage_constraint(filtered_candidates.len(), max_lr);
+    }
+
     let portfolio = match kelly_allocator.allocate(filtered_candidates) {
         Ok(p) => p,
         Err(e) => {

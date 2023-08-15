@@ -1,10 +1,12 @@
 use crate::model::portfolio::Portfolio;
 use nalgebra::DVector;
 
-/// [InequalityConstraint] is used to tag inequality constraints.
+/// [InequalityConstraint] extends the [Constraint] interface and is used for marking purposes only
+/// because each inequality constraint exponentially (power of two) increases the number of problems
+/// to solve, compared to the equality constraint which just adds an equation to the system.
 pub trait InequalityConstraint: Constraint {}
 
-/// TODO: Declare EqualityConstraint when the time comes
+/// TODO: Declare EqualityConstraint here when the time comes.
 
 /// [Constraint] is a super-trait providing the interface for calculating matrix contributions when
 /// solving the Kelly allocation problem. The only thing needed for implementing a constraint is to
@@ -15,7 +17,4 @@ pub trait Constraint {
 
     /// Constraint function value. Ends up in the right-hand-side of the system.
     fn function_value(&self, portfolio: &Portfolio, slack_variable: f64) -> f64;
-
-    /// Whether this constraint is satisfied. Used to check whether we found a viable solution.
-    fn is_satisfied(&self, portfolio: &Portfolio) -> bool;
 }

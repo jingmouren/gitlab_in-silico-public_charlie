@@ -111,7 +111,7 @@ impl Company {
     }
 
     /// Return a validation warning if a company has a negative expected return. Within this
-    /// framework (no shorting), this doesn't make sense.
+    /// framework where no shorting is strongly encouraged, this doesn't make sense.
     pub fn validate_negative_expected_return(&self) -> ValidationResult {
         let expected_return = self
             .scenarios
@@ -371,7 +371,7 @@ mod test {
             market_cap: 5e5,
             scenarios: vec![
                 Scenario {
-                    thesis: "Breakeven.".to_string(),
+                    thesis: "Break-even.".to_string(),
                     intrinsic_value: 5e5,
                     probability: 0.5,
                 },

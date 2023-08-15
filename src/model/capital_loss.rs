@@ -34,8 +34,7 @@ impl CapitalLoss {
             return ValidationResult::PROBLEM(Problem {
                 code: "probability-of-loss-of-capital-cannot-be-zero-or-negative".to_string(),
                 message: format!(
-                    "Zero or negative probability of loss is not allowed because it would result \
-                    in an ill-defined problem. Probability: {}",
+                    "Zero or negative probability of loss is not allowed. Probability is {}.",
                     self.probability_of_loss
                 ),
                 severity: Severity::ERROR,
@@ -46,7 +45,7 @@ impl CapitalLoss {
             return ValidationResult::PROBLEM(Problem {
                 code: "probability-of-loss-cannot-be-greater-than-one".to_string(),
                 message: format!(
-                    "Probability of loss greater than 1 is not allowed. Probability: {}",
+                    "Probability of loss greater than 1 is not allowed. Probability is {}.",
                     self.probability_of_loss
                 ),
                 severity: Severity::ERROR,
@@ -62,8 +61,9 @@ impl CapitalLoss {
             return ValidationResult::PROBLEM(Problem {
                 code: "fraction-of-capital-cannot-be-zero-or-negative".to_string(),
                 message: format!(
-                    "Zero or negative fraction of capital lost is not allowed because it would \
-                    result in an ill-defined problem. Fraction: {}",
+                    "Zero or negative fraction of capital lost is not allowed because this input \
+                    represents the fraction of assets one is willing to lose under a worst-case \
+                    scenario. Fraction is {}.",
                     self.fraction_of_capital
                 ),
                 severity: Severity::ERROR,
@@ -74,7 +74,9 @@ impl CapitalLoss {
             return ValidationResult::PROBLEM(Problem {
                 code: "fraction-of-capital-cannot-be-greater-than-one".to_string(),
                 message: format!(
-                    "Fraction of capital lost greater than 1 is not allowed. Fraction: {}",
+                    "Fraction of capital lost greater than 1 is not allowed because it would \
+                    imply the use of leverage, which is not allowed for this constraint. \
+                    Fraction is {}.",
                     self.fraction_of_capital
                 ),
                 severity: Severity::ERROR,
@@ -99,8 +101,7 @@ mod test {
             .validate()
             .contains(&ValidationResult::PROBLEM(Problem {
                 code: "probability-of-loss-of-capital-cannot-be-zero-or-negative".to_string(),
-                message: "Zero or negative probability of loss is not allowed because it would \
-                    result in an ill-defined problem. Probability: 0"
+                message: "Zero or negative probability of loss is not allowed. Probability is 0."
                     .to_string(),
                 severity: Severity::ERROR,
             })));
@@ -116,9 +117,9 @@ mod test {
             .validate()
             .contains(&ValidationResult::PROBLEM(Problem {
                 code: "probability-of-loss-of-capital-cannot-be-zero-or-negative".to_string(),
-                message: "Zero or negative probability of loss is not allowed because it would \
-                result in an ill-defined problem. Probability: -0.2"
-                    .to_string(),
+                message:
+                    "Zero or negative probability of loss is not allowed. Probability is -0.2."
+                        .to_string(),
                 severity: Severity::ERROR,
             })));
     }
@@ -133,7 +134,7 @@ mod test {
             .validate()
             .contains(&ValidationResult::PROBLEM(Problem {
                 code: "probability-of-loss-cannot-be-greater-than-one".to_string(),
-                message: "Probability of loss greater than 1 is not allowed. Probability: 1.2"
+                message: "Probability of loss greater than 1 is not allowed. Probability is 1.2."
                     .to_string(),
                 severity: Severity::ERROR,
             })));
@@ -149,10 +150,10 @@ mod test {
             .validate()
             .contains(&ValidationResult::PROBLEM(Problem {
                 code: "fraction-of-capital-cannot-be-zero-or-negative".to_string(),
-                message:
-                    "Zero or negative fraction of capital lost is not allowed because it would \
-                    result in an ill-defined problem. Fraction: 0"
-                        .to_string(),
+                message: "Zero or negative fraction of capital lost is not allowed because this \
+                    input represents the fraction of assets one is willing to lose under a \
+                    worst-case scenario. Fraction is 0."
+                    .to_string(),
                 severity: Severity::ERROR,
             })));
     }
@@ -167,10 +168,10 @@ mod test {
             .validate()
             .contains(&ValidationResult::PROBLEM(Problem {
                 code: "fraction-of-capital-cannot-be-zero-or-negative".to_string(),
-                message:
-                    "Zero or negative fraction of capital lost is not allowed because it would \
-                    result in an ill-defined problem. Fraction: -0.3"
-                        .to_string(),
+                message: "Zero or negative fraction of capital lost is not allowed because this \
+                    input represents the fraction of assets one is willing to lose under a \
+                    worst-case scenario. Fraction is -0.3."
+                    .to_string(),
                 severity: Severity::ERROR,
             })));
     }
@@ -185,7 +186,9 @@ mod test {
             .validate()
             .contains(&ValidationResult::PROBLEM(Problem {
                 code: "fraction-of-capital-cannot-be-greater-than-one".to_string(),
-                message: "Fraction of capital lost greater than 1 is not allowed. Fraction: 2.2"
+                message: "Fraction of capital lost greater than 1 is not allowed because it would \
+                    imply the use of leverage, which is not allowed for this constraint. \
+                    Fraction is 2.2."
                     .to_string(),
                 severity: Severity::ERROR,
             })));
