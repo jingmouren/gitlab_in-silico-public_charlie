@@ -12,6 +12,7 @@ path = "src/lib.rs"
 [dependencies]
 bitvec = "1.0.1"
 camino = "1.1.4"
+clap = { version = "4.3.22", features = ["derive"] }
 dropshot = "0.9.0"
 http = "0.2.9"
 hyper = "0.14.25"

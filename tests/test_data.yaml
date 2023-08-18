@@ -1,0 +1,100 @@
+candidates:
+  - name: A
+    ticker: A
+    description: Business A
+    market_cap: 238000000000
+    scenarios:
+      - thesis: Unexpected stuff happens
+        intrinsic_value: 0
+        probability: 0.05
+      - thesis: Core business keeps losing earnings power
+        intrinsic_value: 170000000000
+        probability: 0.3
+      - thesis: "Business doesn't grow, earnings kept flat"
+        intrinsic_value: 270000000000
+        probability: 0.5
+      - thesis: Earnings grow slightly
+        intrinsic_value: 360000000000
+        probability: 0.15
+  - name: B
+    ticker: B
+    description: Business B
+    market_cap: 363000000
+    scenarios:
+      - thesis: Unexpected stuff happens
+        intrinsic_value: 0
+        probability: 0.05
+      - thesis: Liquidation value
+        intrinsic_value: 350000000
+        probability: 0.5
+      - thesis: Cycle moves upward and the market values the business correctly
+        intrinsic_value: 900000000
+        probability: 0.45
+  - name: C
+    ticker: C
+    description: Business C
+    market_cap: 35300000
+    scenarios:
+      - thesis: >
+          They don't manage to liquidate and it turns out that they're
+          incompetent as they were in the past
+        intrinsic_value: 0
+        probability: 0.1
+      - thesis: They manage to liquidate at 25% of similar realized prices in the past
+        intrinsic_value: 33500000
+        probability: 0.5
+      - thesis: They manage to liquidate at 50% of similar realized prices in the past
+        intrinsic_value: 135000000
+        probability: 0.4
+  - name: D
+    ticker: D
+    description: Business D
+    market_cap: 608000000
+    scenarios:
+      - thesis: >
+          Assumes depressed normalized earnings, significantly higher future
+          capital expenditures than in the past, inability to pass on the
+          increased costs to customers, and a multiple of 10x.
+        intrinsic_value: 330000000
+        probability: 0.5
+      - thesis: >
+          Assumes that the last year earnings are representative of future
+          earnings, with 15x multiple.
+        intrinsic_value: 1000000000
+        probability: 0.5
+  - name: E
+    ticker: E
+    description: Business E
+    market_cap: 441000000000
+    scenarios:
+      - thesis: Unexpected stuff happens
+        intrinsic_value: 0
+        probability: 0.05
+      - thesis: >
+          They lose market share and normalized earnings power by 10% a year for
+          five years, after which someone is willing to pay 8x earnings.
+        intrinsic_value: 320000000000
+        probability: 0.5
+      - thesis: >
+          They keep growing at 5% a year for five years, after which someone is
+          willing to pay 12x earnings.
+        intrinsic_value: 800000000000
+        probability: 0.45
+  - name: F
+    ticker: F
+    description: Business F
+    market_cap: 17600000
+    scenarios:
+      - thesis: They don't manage to liquidate and just lose all the money
+        intrinsic_value: 0
+        probability: 0.05
+      - thesis: >
+          They liquidate without realizing assets in escrow account, assuming
+          significant quarterly cash loss until liquidation
+        intrinsic_value: 10000000
+        probability: 0.25
+      - thesis: >-
+          They liquidate everything, assuming reasonable cash loss until
+          liquidation
+        intrinsic_value: 25000000
+        probability: 0.7
