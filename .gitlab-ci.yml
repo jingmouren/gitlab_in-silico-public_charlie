@@ -84,8 +84,8 @@ cli-tests:
   extends: .rust_image
   stage: Functional Tests
   script:
-    - cargo run --release --bin charlie allocate ./tests/test_data_no_constraints.yaml
-    - cargo run --release --bin charlie allocate ./tests/test_data_with_constraints.yaml
+    - cargo run --release --bin charlie_cli allocate ./tests/test_data_no_constraints.yaml
+    - cargo run --release --bin charlie_cli allocate ./tests/test_data_with_constraints.yaml
 
 release-image:
   extends: .docker_image
