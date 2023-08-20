@@ -1,4 +1,4 @@
-use charlie::env::{create_logger, create_test_logger, get_project_dir};
+use charlie::env::{create_test_logger, get_project_dir};
 use charlie::kelly_allocation::{KellyAllocator, MAX_ITER, SOLVER_TOLERANCE};
 use charlie::model::errors::Error;
 use charlie::model::portfolio::AllocationInput;
@@ -7,21 +7,21 @@ use charlie::utils::assert_close;
 use charlie::validation::result::{Problem, Severity, ValidationResult};
 use charlie::{allocate, analyze, validate};
 use slog::info;
-use slog::Level::Info;
 
 /// Make assertion tolerance the same as the fraction tolerance (no point in more accuracy).
 const ASSERTION_TOLERANCE: f64 = SOLVER_TOLERANCE;
 
 /// Helper function to load the test YAML file as a string.
-fn load_test_input_file() -> String {
-    let test_file_path = get_project_dir().join("tests").join("test_data.yaml");
+fn load_test_file_content(file_name: &str) -> String {
+    let test_file_path = get_project_dir().join("tests").join(file_name);
     std::fs::read_to_string(&test_file_path)
         .expect("Did not manage to read test file in PROJECT_DIR/tests/test_data.yaml.")
 }
 
 #[test]
 fn test_create_candidates_and_validate() {
-    let input: AllocationInput = serde_yaml::from_str(&load_test_input_file()).unwrap();
+    let input: AllocationInput =
+        serde_yaml::from_str(&load_test_file_content("test_data_no_constraints.yaml")).unwrap();
 
     assert_eq!(input.candidates.len(), 6);
 
@@ -100,7 +100,8 @@ fn test_create_candidates_and_validate() {
 #[test]
 fn test_allocate_with_validation_problems() {
     // Change the probability of the first scenario from 0.05 to 0.03
-    let mut input: AllocationInput = serde_yaml::from_str(&load_test_input_file()).unwrap();
+    let mut input: AllocationInput =
+        serde_yaml::from_str(&load_test_file_content("test_data_no_constraints.yaml")).unwrap();
     input.candidates[0].scenarios[0].probability = 0.03;
 
     let logger = create_test_logger();
@@ -124,7 +125,8 @@ fn test_allocate_with_validation_problems() {
 fn test_allocate_with_no_candidates_after_filtering() {
     // Keep only two candidates and change the numbers such that one has negative expected return
     // and the other has no downside scenario
-    let mut input: AllocationInput = serde_yaml::from_str(&load_test_input_file()).unwrap();
+    let mut input: AllocationInput =
+        serde_yaml::from_str(&load_test_file_content("test_data_no_constraints.yaml")).unwrap();
     input.candidates.pop();
     input.candidates.pop();
     input.candidates.pop();
@@ -184,7 +186,8 @@ fn test_allocate_with_no_candidates_after_filtering() {
 /// likely large upside.
 #[test]
 fn test_allocate_case_that_does_not_converge() {
-    let mut input: AllocationInput = serde_yaml::from_str(&load_test_input_file()).unwrap();
+    let mut input: AllocationInput =
+        serde_yaml::from_str(&load_test_file_content("test_data_no_constraints.yaml")).unwrap();
 
     // Remove first scenario such that we're left with only two of them
     input.candidates[5].scenarios.remove(0);
@@ -219,7 +222,8 @@ fn test_allocate_case_that_does_not_converge() {
 fn test_allocate() {
     // Create candidates and validate them
     let logger = create_test_logger();
-    let input: AllocationInput = serde_yaml::from_str(&load_test_input_file()).unwrap();
+    let input: AllocationInput =
+        serde_yaml::from_str(&load_test_file_content("test_data_no_constraints.yaml")).unwrap();
     let validation_errors: Vec<ValidationResult> = validate(&input, &logger);
     assert_eq!(validation_errors, vec![]);
 
@@ -279,25 +283,10 @@ fn test_allocate() {
 #[test]
 fn test_allocate_with_constraints() {
     // Create candidates and validate them.
-    let logger = create_logger(Info);
+    let logger = create_test_logger();
 
-    let test_input_with_constraints = load_test_input_file()
-        + &"
-long_only: true
-max_permanent_loss_of_capital:
-    fraction_of_capital: 0.5
-    probability_of_loss: 0.2
-max_individual_allocation: 0.3
-max_total_leverage_ratio: 0.0
-    "
-        .to_string();
-
-    info!(logger, "\n{}", test_input_with_constraints);
-
-    let mut input: AllocationInput = serde_yaml::from_str(&test_input_with_constraints).unwrap();
-    input.candidates.pop(); // Remove F candidate
-    input.candidates.pop(); // Remove E candidate
-    input.candidates.remove(0); // Remove A candidate
+    let input: AllocationInput =
+        serde_yaml::from_str(&load_test_file_content("test_data_with_constraints.yaml")).unwrap();
 
     let validation_errors: Vec<ValidationResult> = validate(&input, &logger);
     assert_eq!(validation_errors, vec![]);
@@ -329,7 +318,8 @@ max_total_leverage_ratio: 0.0
 fn test_analyze() {
     // Create candidates and validate them
     let logger = create_test_logger();
-    let input: AllocationInput = serde_yaml::from_str(&load_test_input_file()).unwrap();
+    let input: AllocationInput =
+        serde_yaml::from_str(&load_test_file_content("test_data_no_constraints.yaml")).unwrap();
     let validation_errors: Vec<ValidationResult> = validate(&input, &logger);
     assert_eq!(validation_errors, vec![]);
 
