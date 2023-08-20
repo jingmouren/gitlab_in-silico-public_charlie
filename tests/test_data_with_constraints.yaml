@@ -1,0 +1,53 @@
+long_only: true
+max_permanent_loss_of_capital:
+  fraction_of_capital: 0.5
+  probability_of_loss: 0.2
+max_individual_allocation: 0.3
+max_total_leverage_ratio: 0.0
+candidates:
+  - name: B
+    ticker: B
+    description: Business B
+    market_cap: 363000000
+    scenarios:
+      - thesis: Unexpected stuff happens
+        intrinsic_value: 0
+        probability: 0.05
+      - thesis: Liquidation value
+        intrinsic_value: 350000000
+        probability: 0.5
+      - thesis: Cycle moves upward and the market values the business correctly
+        intrinsic_value: 900000000
+        probability: 0.45
+  - name: C
+    ticker: C
+    description: Business C
+    market_cap: 35300000
+    scenarios:
+      - thesis: >
+          They don't manage to liquidate and it turns out that they're
+          incompetent as they were in the past
+        intrinsic_value: 0
+        probability: 0.1
+      - thesis: They manage to liquidate at 25% of similar realized prices in the past
+        intrinsic_value: 33500000
+        probability: 0.5
+      - thesis: They manage to liquidate at 50% of similar realized prices in the past
+        intrinsic_value: 135000000
+        probability: 0.4
+  - name: D
+    ticker: D
+    description: Business D
+    market_cap: 608000000
+    scenarios:
+      - thesis: >
+          Assumes depressed normalized earnings, significantly higher future
+          capital expenditures than in the past, inability to pass on the
+          increased costs to customers, and a multiple of 10x.
+        intrinsic_value: 330000000
+        probability: 0.5
+      - thesis: >
+          Assumes that the last year earnings are representative of future
+          earnings, with 15x multiple.
+        intrinsic_value: 1000000000
+        probability: 0.5

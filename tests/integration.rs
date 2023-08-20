@@ -1,4 +1,4 @@
-use charlie::env::create_test_logger;
+use charlie::env::{create_test_logger, get_project_dir};
 use charlie::kelly_allocation::{KellyAllocator, MAX_ITER, SOLVER_TOLERANCE};
 use charlie::model::errors::Error;
 use charlie::model::portfolio::AllocationInput;
@@ -11,115 +11,17 @@ use slog::info;
 /// Make assertion tolerance the same as the fraction tolerance (no point in more accuracy).
 const ASSERTION_TOLERANCE: f64 = SOLVER_TOLERANCE;
 
-const TEST_YAML: &str = "
-          candidates:
-          - name: A
-            ticker: A
-            description: Business A
-            market_cap: 238.0e9
-            scenarios:
-              - thesis: Unexpected stuff happens
-                intrinsic_value: 0.0
-                probability: 0.05
-              - thesis: Core business keeps losing earnings power
-                intrinsic_value: 170.0e9
-                probability: 0.3
-              - thesis: Business doesn't grow, earnings kept flat
-                intrinsic_value: 270.0e9
-                probability: 0.5
-              - thesis: Earnings grow slightly
-                intrinsic_value: 360.0e9
-                probability: 0.15
-
-          - name: B
-            ticker: B
-            description: Business B
-            market_cap: 363.0e6
-            scenarios:
-              - thesis: Unexpected stuff happens
-                intrinsic_value: 0.0
-                probability: 0.05
-              - thesis: Liquidation value
-                intrinsic_value: 350.0e6
-                probability: 0.5
-              - thesis: Cycle moves upward and the market values the business correctly
-                intrinsic_value: 900.0e6
-                probability: 0.45
-
-          - name: C
-            ticker: C
-            description: Business C
-            market_cap: 35.3e6
-            scenarios:
-              - thesis: >
-                    They don't manage to liquidate and it turns out that they're incompetent as
-                    they were in the past
-                intrinsic_value: 0.0
-                probability: 0.1
-              - thesis: They manage to liquidate at 25% of similar realized prices in the past
-                intrinsic_value: 33.5e6
-                probability: 0.5
-              - thesis: They manage to liquidate at 50% of similar realized prices in the past
-                intrinsic_value: 135.0e6
-                probability: 0.4
-
-          - name: D
-            ticker: D
-            description: Business D
-            market_cap: 608.0e6
-            scenarios:
-              - thesis: >
-                    Assumes depressed normalized earnings, significantly higher future capital
-                    expenditures than in the past, inability to pass on the increased costs to
-                    customers, and a multiple of 10x.
-                intrinsic_value: 330.0e6
-                probability: 0.5
-              - thesis: >
-                    Assumes that the last year earnings are representative of future earnings,
-                    with 15x multiple.
-                intrinsic_value: 1000.0e6
-                probability: 0.5
-
-          - name: E
-            ticker: E
-            description: Business E
-            market_cap: 441.0e9
-            scenarios:
-              - thesis: Unexpected stuff happens
-                intrinsic_value: 0.0
-                probability: 0.05
-              - thesis: >
-                    They lose market share and normalized earnings power by 10% a year for five
-                    years, after which someone is willing to pay 8x earnings.
-                intrinsic_value: 320.0e9
-                probability: 0.5
-              - thesis: >
-                    They keep growing at 5% a year for five years, after which someone is willing
-                    to pay 12x earnings.
-                intrinsic_value: 800.0e9
-                probability: 0.45
-
-          - name: F
-            ticker: F
-            description: Business F
-            market_cap: 17.6e6
-            scenarios:
-              - thesis: They don't manage to liquidate and just lose all the money
-                intrinsic_value: 0.0
-                probability: 0.05
-              - thesis: >
-                    They liquidate without realizing assets in escrow account, assuming significant
-                    quarterly cash loss until liquidation
-                intrinsic_value: 10.0e6
-                probability: 0.25
-              - thesis: They liquidate everything, assuming reasonable cash loss until liquidation
-                intrinsic_value: 25.0e6
-                probability: 0.7
-        ";
+/// Helper function to load the test YAML file as a string.
+fn load_test_file_content(file_name: &str) -> String {
+    let test_file_path = get_project_dir().join("tests").join(file_name);
+    std::fs::read_to_string(&test_file_path)
+        .expect("Did not manage to read test file in PROJECT_DIR/tests/test_data.yaml.")
+}
 
 #[test]
 fn test_create_candidates_and_validate() {
-    let input: AllocationInput = serde_yaml::from_str(&TEST_YAML.to_string()).unwrap();
+    let input: AllocationInput =
+        serde_yaml::from_str(&load_test_file_content("test_data_no_constraints.yaml")).unwrap();
 
     assert_eq!(input.candidates.len(), 6);
 
@@ -198,7 +100,8 @@ fn test_create_candidates_and_validate() {
 #[test]
 fn test_allocate_with_validation_problems() {
     // Change the probability of the first scenario from 0.05 to 0.03
-    let mut input: AllocationInput = serde_yaml::from_str(&TEST_YAML.to_string()).unwrap();
+    let mut input: AllocationInput =
+        serde_yaml::from_str(&load_test_file_content("test_data_no_constraints.yaml")).unwrap();
     input.candidates[0].scenarios[0].probability = 0.03;
 
     let logger = create_test_logger();
@@ -222,7 +125,8 @@ fn test_allocate_with_validation_problems() {
 fn test_allocate_with_no_candidates_after_filtering() {
     // Keep only two candidates and change the numbers such that one has negative expected return
     // and the other has no downside scenario
-    let mut input: AllocationInput = serde_yaml::from_str(&TEST_YAML.to_string()).unwrap();
+    let mut input: AllocationInput =
+        serde_yaml::from_str(&load_test_file_content("test_data_no_constraints.yaml")).unwrap();
     input.candidates.pop();
     input.candidates.pop();
     input.candidates.pop();
@@ -282,7 +186,8 @@ fn test_allocate_with_no_candidates_after_filtering() {
 /// likely large upside.
 #[test]
 fn test_allocate_case_that_does_not_converge() {
-    let mut input: AllocationInput = serde_yaml::from_str(&TEST_YAML.to_string()).unwrap();
+    let mut input: AllocationInput =
+        serde_yaml::from_str(&load_test_file_content("test_data_no_constraints.yaml")).unwrap();
 
     // Remove first scenario such that we're left with only two of them
     input.candidates[5].scenarios.remove(0);
@@ -317,7 +222,8 @@ fn test_allocate_case_that_does_not_converge() {
 fn test_allocate() {
     // Create candidates and validate them
     let logger = create_test_logger();
-    let input: AllocationInput = serde_yaml::from_str(&TEST_YAML.to_string()).unwrap();
+    let input: AllocationInput =
+        serde_yaml::from_str(&load_test_file_content("test_data_no_constraints.yaml")).unwrap();
     let validation_errors: Vec<ValidationResult> = validate(&input, &logger);
     assert_eq!(validation_errors, vec![]);
 
@@ -376,23 +282,11 @@ fn test_allocate() {
 /// is enough for the integration test.
 #[test]
 fn test_allocate_with_constraints() {
-    // Create candidates and validate them
+    // Create candidates and validate them.
     let logger = create_test_logger();
-    let test_input_with_constraints = "
-          long_only: true
-          max_permanent_loss_of_capital:
-              fraction_of_capital: 0.5
-              probability_of_loss: 0.2
-          max_individual_allocation: 0.3
-          max_total_leverage_ratio: 0.0
-    "
-    .to_string()
-        + TEST_YAML;
 
-    let mut input: AllocationInput = serde_yaml::from_str(&test_input_with_constraints).unwrap();
-    input.candidates.pop(); // Remove F candidate
-    input.candidates.pop(); // Remove E candidate
-    input.candidates.remove(0); // Remove A candidate
+    let input: AllocationInput =
+        serde_yaml::from_str(&load_test_file_content("test_data_with_constraints.yaml")).unwrap();
 
     let validation_errors: Vec<ValidationResult> = validate(&input, &logger);
     assert_eq!(validation_errors, vec![]);
@@ -424,7 +318,8 @@ fn test_allocate_with_constraints() {
 fn test_analyze() {
     // Create candidates and validate them
     let logger = create_test_logger();
-    let input: AllocationInput = serde_yaml::from_str(&TEST_YAML.to_string()).unwrap();
+    let input: AllocationInput =
+        serde_yaml::from_str(&load_test_file_content("test_data_no_constraints.yaml")).unwrap();
     let validation_errors: Vec<ValidationResult> = validate(&input, &logger);
     assert_eq!(validation_errors, vec![]);
 

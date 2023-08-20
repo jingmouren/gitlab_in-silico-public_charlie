@@ -62,7 +62,7 @@ build:
     - docker build --pull -t $IMAGE .
     - docker push $IMAGE
 
-functional-tests:
+rest-api-tests:
   extends: .docker_image
   stage: Functional Tests
   variables:
@@ -79,6 +79,13 @@ functional-tests:
     # Clean-up
     - docker container kill $TEST_CONTAINER_NAME
     - docker container rm $TEST_CONTAINER_NAME
+
+cli-tests:
+  extends: .rust_image
+  stage: Functional Tests
+  script:
+    - cargo run --release --bin charlie_cli allocate ./tests/test_data_no_constraints.yaml
+    - cargo run --release --bin charlie_cli allocate ./tests/test_data_with_constraints.yaml
 
 release-image:
   extends: .docker_image
