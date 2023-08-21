@@ -3,6 +3,7 @@
 Minimum features for public release:
 - [x] Command line interface
 - [ ] Update the paper with constraints
+- [ ] Add basic validation tests from paper to integration tests
 - [ ] Update front-end with constraints and limits (maybe just limit to 3 companies to make it feasible)
 - [ ] Break-up the documentation into 4 sections following divio: Tutorials, How-To guides, Explanation, Reference
 
