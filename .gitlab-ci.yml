@@ -1,5 +1,5 @@
 .rust_image:
-  image: rust:latest
+  image: rust:1.72
   before_script:
     - rustc --version
     - cargo --version
@@ -45,7 +45,7 @@ audit:
   stage: Checks
   script:
     - cargo install cargo-audit
-    - cargo audit --ignore RUSTSEC-2020-0071 # TODO: Fix vulnerabilities
+    - cargo audit
 
 unit-tests:
   extends: .rust_image
