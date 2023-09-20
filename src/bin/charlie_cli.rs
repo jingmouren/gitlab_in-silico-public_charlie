@@ -1,6 +1,5 @@
 use charlie::env::create_logger;
 use charlie::model::portfolio::{AllocationInput, Portfolio};
-use charlie::model::responses::AllocationResult;
 use charlie::{allocate, analyze};
 use clap::Parser;
 use slog::Level::Info;
@@ -49,12 +48,12 @@ fn allocate_action(logger: &Logger, yaml_file_content: String) {
     let input: AllocationInput = serde_yaml::from_str(&yaml_file_content.to_string()).unwrap();
 
     info!(logger, "Started calculating optimal portfolio allocation.");
-    let portfolio: AllocationResult = match allocate(input, logger).error {
-        None => p.0.result.unwrap(),
-        Some(e) => panic!("{}", e.message),
+    let allocation_response = allocate(input, logger);
+    if allocation_response.error.is_some() {
+        panic!("{}", allocation_response.error.unwrap().message)
     };
-    let result = serde_yaml::to_string(&portfolio.allocations).unwrap();
 
+    let result = serde_yaml::to_string(&allocation_response.result.unwrap().allocations).unwrap();
     info!(logger, "Optimal portfolio is:\n{}", result);
 }
 
@@ -67,12 +66,12 @@ fn analyze_action(logger: &Logger, yaml_file_content: String) {
     let input: Portfolio = serde_yaml::from_str(&yaml_file_content.to_string()).unwrap();
 
     info!(logger, "Analyzing the portfolio.");
-    let analysis_result = match analyze(input, logger).0.error {
-        None => r.0.result.unwrap(),
-        Some(e) => panic!("{}", e.message),
+    let analysis_response = analyze(input, logger);
+    if analysis_response.error.is_some() {
+        panic!("{}", analysis_response.error.unwrap().message)
     };
-    let result = serde_yaml::to_string(&analysis_result).unwrap();
 
+    let result = serde_yaml::to_string(&analysis_response.result.unwrap()).unwrap();
     info!(logger, "Portfolio statistics are:\n{}", result);
 }
 

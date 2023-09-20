@@ -81,7 +81,7 @@ pub async fn allocate_endpoint(
     rqctx: RequestContext<()>,
     body: TypedBody<AllocationInput>,
 ) -> Result<HttpResponseOk<AllocationResponse>, HttpError> {
-    let mut allocation_result = allocate(body.into_inner(), &rqctx.log);
+    let allocation_result = allocate(body.into_inner(), &rqctx.log);
     Ok(HttpResponseOk(allocation_result))
 }
 
@@ -120,10 +120,7 @@ pub fn validate(portfolio_candidates: &AllocationInput, logger: &Logger) -> Vec<
 }
 
 /// Calculates optimal allocation for each candidate company
-pub fn allocate(
-    allocation_input: AllocationInput,
-    logger: &Logger,
-) -> AllocationResponse {
+pub fn allocate(allocation_input: AllocationInput, logger: &Logger) -> AllocationResponse {
     info!(logger, "Started allocation.");
 
     // Return immediately if there is at least one validation error
@@ -280,10 +277,7 @@ pub fn allocate(
 }
 
 /// Calculates useful information about the portfolio
-pub fn analyze(
-    portfolio: Portfolio,
-    logger: &Logger,
-) -> AnalysisResponse {
+pub fn analyze(portfolio: Portfolio, logger: &Logger) -> AnalysisResponse {
     info!(
         logger,
         "Started portfolio analysis by getting all outcomes."
@@ -295,10 +289,10 @@ pub fn analyze(
                 logger,
                 "Encountered an error while getting all outcomes. Returning it."
             );
-            return Ok(HttpResponseOk(AnalysisResponse {
+            return AnalysisResponse {
                 result: None,
                 error: Some(e),
-            }));
+            };
         }
     };
     let worst_case = worst_case_outcome(&portfolio, logger);
