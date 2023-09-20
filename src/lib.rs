@@ -81,7 +81,8 @@ pub async fn allocate_endpoint(
     rqctx: RequestContext<()>,
     body: TypedBody<AllocationInput>,
 ) -> Result<HttpResponseOk<AllocationResponse>, HttpError> {
-    allocate(body.into_inner(), &rqctx.log)
+    let mut allocation_result = allocate(body.into_inner(), &rqctx.log);
+    Ok(HttpResponseOk(allocation_result))
 }
 
 /// Analyze the portfolio by calculating useful statistics
@@ -94,7 +95,8 @@ pub async fn analyze_endpoint(
     rqctx: RequestContext<()>,
     body: TypedBody<Portfolio>,
 ) -> Result<HttpResponseOk<AnalysisResponse>, HttpError> {
-    analyze(body.into_inner(), &rqctx.log)
+    let analysis_result = analyze(body.into_inner(), &rqctx.log);
+    Ok(HttpResponseOk(analysis_result))
 }
 
 /// Validate the candidates and return all problematic validations.
@@ -121,7 +123,7 @@ pub fn validate(portfolio_candidates: &AllocationInput, logger: &Logger) -> Vec<
 pub fn allocate(
     allocation_input: AllocationInput,
     logger: &Logger,
-) -> Result<HttpResponseOk<AllocationResponse>, HttpError> {
+) -> AllocationResponse {
     info!(logger, "Started allocation.");
 
     // Return immediately if there is at least one validation error
@@ -131,11 +133,11 @@ pub fn allocate(
         ValidationResult::OK => false,
     }) {
         info!(logger, "Validation problems found, returning them.");
-        return Ok(HttpResponseOk(AllocationResponse {
+        return AllocationResponse {
             result: None,
             validation_problems: Some(validation_problems),
             error: None,
-        }));
+        };
     }
 
     // Create a subset of all candidates that can be handled by the algorithm. We don't allow:
@@ -176,14 +178,14 @@ pub fn allocate(
             logger,
             "No valid candidates found after filtering, returning an error."
         );
-        return Ok(HttpResponseOk(AllocationResponse {
+        return AllocationResponse {
             result: None,
             validation_problems: Some(validation_problems),
             error: Some(Error {
                 code: "no-valid-candidates-for-allocation".to_string(),
                 message: "Found no valid candidates for allocation. Check your input.".to_string(),
             }),
-        }));
+        };
     }
 
     info!(
@@ -218,11 +220,11 @@ pub fn allocate(
     let portfolio = match kelly_allocator.allocate(filtered_candidates) {
         Ok(p) => p,
         Err(e) => {
-            return Ok(HttpResponseOk(AllocationResponse {
+            return AllocationResponse {
                 result: None,
                 validation_problems: Some(validation_problems),
                 error: Some(e),
-            }));
+            };
         }
     };
 
@@ -247,11 +249,11 @@ pub fn allocate(
                 logger,
                 "Encountered an error while getting all outcomes. Returning it."
             );
-            return Ok(HttpResponseOk(AllocationResponse {
+            return AllocationResponse {
                 result: None,
                 validation_problems: None,
                 error: Some(e),
-            }));
+            };
         }
     };
     let worst_case = worst_case_outcome(&portfolio, logger);
@@ -260,7 +262,7 @@ pub fn allocate(
         logger,
         "Allocation and analysis finished. Returning the allocation and analysis results."
     );
-    Ok(HttpResponseOk(AllocationResponse {
+    AllocationResponse {
         result: Some(AllocationResult {
             allocations: allocation_result,
             analysis: AnalysisResult {
@@ -274,14 +276,14 @@ pub fn allocate(
         }),
         validation_problems: Some(validation_problems),
         error: None,
-    }))
+    }
 }
 
-/// Calculates useful information about the porftolio
+/// Calculates useful information about the portfolio
 pub fn analyze(
     portfolio: Portfolio,
     logger: &Logger,
-) -> Result<HttpResponseOk<AnalysisResponse>, HttpError> {
+) -> AnalysisResponse {
     info!(
         logger,
         "Started portfolio analysis by getting all outcomes."
@@ -302,12 +304,12 @@ pub fn analyze(
     let worst_case = worst_case_outcome(&portfolio, logger);
 
     info!(logger, "Analysis complete, returning.");
-    Ok(HttpResponseOk(AnalysisResponse {
+    AnalysisResponse {
         result: Some(AnalysisResult {
             worst_case_outcome: worst_case,
             cumulative_probability_of_loss: cumulative_probability_of_loss(&all_outcomes, logger),
             expected_return: expected_return(&portfolio, logger),
         }),
         error: None,
-    }))
+    }
 }

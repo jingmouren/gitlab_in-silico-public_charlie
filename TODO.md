@@ -10,8 +10,6 @@ Improvements:
 - [ ] Add renovate bot
 - [ ] Improve test coverage
 - [ ] Organize error codes in a centralized place since it's easier
-- [ ] API trait with controller and http client, clean up the interface in lib.rs such that we don't go through the
-      functions returning Http responses for CLI
 - [ ] Consider dependency injection for the Logger object that's passed around
 - [ ] Figure out how to add basic validations to OpenAPI schema via schemars
 

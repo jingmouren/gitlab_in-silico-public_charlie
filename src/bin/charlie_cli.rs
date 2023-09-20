@@ -49,12 +49,9 @@ fn allocate_action(logger: &Logger, yaml_file_content: String) {
     let input: AllocationInput = serde_yaml::from_str(&yaml_file_content.to_string()).unwrap();
 
     info!(logger, "Started calculating optimal portfolio allocation.");
-    let portfolio: AllocationResult = match allocate(input, logger) {
-        Ok(p) => match p.0.error {
-            None => p.0.result.unwrap(),
-            Some(e) => panic!("{}", e.message),
-        },
-        Err(_) => panic!("We should never get an HttpError via CLI, something went wrong."),
+    let portfolio: AllocationResult = match allocate(input, logger).error {
+        None => p.0.result.unwrap(),
+        Some(e) => panic!("{}", e.message),
     };
     let result = serde_yaml::to_string(&portfolio.allocations).unwrap();
 
@@ -70,12 +67,9 @@ fn analyze_action(logger: &Logger, yaml_file_content: String) {
     let input: Portfolio = serde_yaml::from_str(&yaml_file_content.to_string()).unwrap();
 
     info!(logger, "Analyzing the portfolio.");
-    let analysis_result = match analyze(input, logger) {
-        Ok(r) => match r.0.error {
-            None => r.0.result.unwrap(),
-            Some(e) => panic!("{}", e.message),
-        },
-        Err(_) => panic!("We should never get an HttpError via CLI, something went wrong."),
+    let analysis_result = match analyze(input, logger).0.error {
+        None => r.0.result.unwrap(),
+        Some(e) => panic!("{}", e.message),
     };
     let result = serde_yaml::to_string(&analysis_result).unwrap();
 
