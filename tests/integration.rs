@@ -105,7 +105,7 @@ fn test_allocate_with_validation_problems() {
     input.candidates[0].scenarios[0].probability = 0.03;
 
     let logger = create_test_logger();
-    let allocation_response: AllocationResponse = allocate(input, &logger).unwrap().0;
+    let allocation_response: AllocationResponse = allocate(input, &logger);
 
     assert!(allocation_response.error.is_none());
     assert!(allocation_response.result.is_none());
@@ -145,7 +145,7 @@ fn test_allocate_with_no_candidates_after_filtering() {
 
     // Allocate and assert that we got an error
     let logger = create_test_logger();
-    let allocation_response: AllocationResponse = allocate(input, &logger).unwrap().0;
+    let allocation_response: AllocationResponse = allocate(input, &logger);
 
     assert!(allocation_response.result.is_none());
 
@@ -201,7 +201,7 @@ fn test_allocate_case_that_does_not_converge() {
     input.candidates[5].scenarios[1].intrinsic_value = 100.0 * input.candidates[5].market_cap;
 
     let logger = create_test_logger();
-    let allocation_response: AllocationResponse = allocate(input, &logger).unwrap().0;
+    let allocation_response: AllocationResponse = allocate(input, &logger);
 
     assert_eq!(allocation_response.validation_problems.unwrap(), vec![]);
     assert!(allocation_response.result.is_none());
@@ -228,7 +228,7 @@ fn test_allocate() {
     assert_eq!(validation_errors, vec![]);
 
     // Allocate
-    let portfolio: AllocationResponse = allocate(input, &logger).unwrap().0;
+    let portfolio: AllocationResponse = allocate(input, &logger);
     let tickers_and_fractions: Vec<TickerAndFraction> = portfolio.result.unwrap().allocations;
 
     // Debug convenience: To see the output, use create_logger(Info) instead of create_test_logger()
@@ -292,7 +292,7 @@ fn test_allocate_with_constraints() {
     assert_eq!(validation_errors, vec![]);
 
     // Allocate
-    let portfolio: AllocationResponse = allocate(input, &logger).unwrap().0;
+    let portfolio: AllocationResponse = allocate(input, &logger);
     let tickers_and_fractions: Vec<TickerAndFraction> = portfolio.result.unwrap().allocations;
 
     // Debug convenience: To see the output, use create_logger(Info) instead of create_test_logger()
@@ -327,7 +327,7 @@ fn test_analyze() {
     let portfolio = KellyAllocator::new(&logger, MAX_ITER)
         .allocate(input.candidates)
         .unwrap();
-    let analysis_response: AnalysisResponse = analyze(portfolio, &logger).unwrap().0;
+    let analysis_response: AnalysisResponse = analyze(portfolio, &logger);
     let analysis_result = analysis_response.result.unwrap();
 
     // Debug convenience: To see the output, use create_logger(Info) instead of create_test_logger()

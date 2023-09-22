@@ -5,7 +5,7 @@
         "content": {
           "application/json": {
             "schema": {
-              "$ref": "#/components/schemas/Error"
+              "$ref": "#/components/schemas/Error2"
             }
           }
         },
@@ -209,6 +209,25 @@
         "required": [
           "code",
           "message"
+        ],
+        "type": "object"
+      },
+      "Error2": {
+        "description": "Error information from a response.",
+        "properties": {
+          "error_code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "request_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "message",
+          "request_id"
         ],
         "type": "object"
       },
