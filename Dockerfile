@@ -1,7 +1,7 @@
 # Multi-stage build to keep the final image small
 
 # STAGE 1: BUILDER image
-FROM rust:latest as BUILDER
+FROM rust:1.72 as BUILDER
 
 # Create a blank (binary) project
 RUN USER=root cargo new --bin /usr/src/charlie
@@ -28,7 +28,7 @@ RUN cargo build --release
 RUN cargo build --example allocate_client --example analyze_client --example api_client --release
 
 # STAGE 2: FINAL image
-FROM debian:bullseye-slim as FINAL
+FROM debian:bookworm-slim as FINAL
 RUN apt-get update && apt-get install -y tzdata ca-certificates && rm -rf /var/lib/apt/lists/*
 
 # Expose port 8000, which will be exposed to the outside when running the container
