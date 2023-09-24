@@ -30,9 +30,9 @@ use std::fs;
 
 /// Basic front-end for simple demonstration purposes
 #[endpoint {
-method = GET,
-path = "/demo",
-tags = [ "demo" ]
+    method = GET,
+    path = "/demo",
+    tags = [ "demo" ]
 }]
 pub async fn demo(_rqctx: RequestContext<()>) -> Result<Response<Body>, HttpError> {
     let demo_file_path = get_project_dir().join("demo").join("demo.html");
