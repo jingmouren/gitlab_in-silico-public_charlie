@@ -28,7 +28,7 @@ use slog::{info, Logger};
 use std::collections::HashSet;
 use std::fs;
 
-/// OpenAPI documentation
+/// Basic front-end for simple demonstration purposes
 #[endpoint {
 method = GET,
 path = "/demo",
