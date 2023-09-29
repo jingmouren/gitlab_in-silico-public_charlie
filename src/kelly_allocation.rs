@@ -473,7 +473,6 @@ impl<'a> KellyAllocator<'a> {
                 //    the right-hand-side function value is negative. Hence, two negations make a
                 //    positive sign.
                 // This is a bit confusing, and I'm not sure how to simplify it...
-                // TODO: Explain this in the paper.
 
                 // Constraint contribution is always added to the lower triangular row for this
                 // constraint, regardless whether it's active or inactive

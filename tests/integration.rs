@@ -1,12 +1,17 @@
-use charlie::env::{create_test_logger, get_project_dir};
+use charlie::env::{create_logger, create_test_logger, get_project_dir};
 use charlie::kelly_allocation::{KellyAllocator, MAX_ITER, SOLVER_TOLERANCE};
+use charlie::model::capital_loss::CapitalLoss;
+use charlie::model::company::Company;
 use charlie::model::errors::Error;
 use charlie::model::portfolio::AllocationInput;
 use charlie::model::responses::{AllocationResponse, AnalysisResponse, TickerAndFraction};
+use charlie::model::scenario::Scenario;
 use charlie::utils::assert_close;
 use charlie::validation::result::{Problem, Severity, ValidationResult};
 use charlie::{allocate, analyze, validate};
+use itertools::Itertools;
 use slog::info;
+use slog::Level::Info;
 
 /// Make assertion tolerance the same as the fraction tolerance (no point in more accuracy).
 const ASSERTION_TOLERANCE: f64 = SOLVER_TOLERANCE;
@@ -215,6 +220,108 @@ fn test_allocate_case_that_does_not_converge() {
     assert!(err
         .message
         .contains("Did not manage to find the numerical solution."));
+}
+
+/// Helper function to create candidates with 5 companies that are all the same.
+fn create_five_same_candidates(
+    long_only: Option<bool>,
+    max_permanent_loss_of_capital: Option<CapitalLoss>,
+    max_total_leverage_ratio: Option<f64>,
+) -> AllocationInput {
+    AllocationInput {
+        candidates: (0..5)
+            .map(|i| Company {
+                name: format!("A{i}").to_string(),
+                ticker: format!("A{i}").to_string(),
+                description: format!("A{i}").to_string(),
+                market_cap: 1.0,
+                scenarios: vec![
+                    Scenario {
+                        thesis: "50% down with 50% probability".to_string(),
+                        intrinsic_value: 0.5,
+                        probability: 0.5,
+                    },
+                    Scenario {
+                        thesis: "100% up with 50% probability".to_string(),
+                        intrinsic_value: 2.0,
+                        probability: 0.5,
+                    },
+                ],
+            })
+            .collect_vec(),
+        max_individual_allocation: None,
+        long_only,
+        max_permanent_loss_of_capital,
+        max_total_leverage_ratio,
+    }
+}
+
+/// Tests that having 5 same candidate companies produces uniform levered allocation.
+#[test]
+fn test_allocate_all_same() {
+    let logger = create_test_logger();
+    let input: AllocationInput = create_five_same_candidates(None, None, None);
+
+    // Allocate
+    let portfolio: AllocationResponse = allocate(input, &logger);
+    let tickers_and_fractions: Vec<TickerAndFraction> = portfolio.result.unwrap().allocations;
+
+    // Assert that all the fractions are the same
+    tickers_and_fractions
+        .iter()
+        .for_each(|tf| assert_close!(0.3451229, tf.fraction, ASSERTION_TOLERANCE));
+}
+
+/// Tests that having 5 same candidate companies with no-leverage constraint produces a non-levered
+/// uniform allocation.
+#[test]
+fn test_allocate_all_same_with_no_leverage() {
+    let logger = create_test_logger();
+    let input: AllocationInput = create_five_same_candidates(None, None, Some(0.0));
+
+    // Allocate
+    let portfolio: AllocationResponse = allocate(input, &logger);
+    let tickers_and_fractions: Vec<TickerAndFraction> = portfolio.result.unwrap().allocations;
+
+    // Assert that all the fractions are the same and they sum up to 1 (no leverage)
+    tickers_and_fractions
+        .iter()
+        .for_each(|tf| assert_close!(0.2, tf.fraction, ASSERTION_TOLERANCE));
+
+    assert_close!(
+        1.0,
+        tickers_and_fractions
+            .iter()
+            .map(|tf| tf.fraction)
+            .sum::<f64>(),
+        ASSERTION_TOLERANCE
+    );
+}
+
+/// Tests that having 5 same candidate companies with no-leverage and maximum capital loss
+/// constraint produces a uniform allocation where not all assets are invested.
+#[test]
+fn test_allocate_all_same_with_no_leverage_and_maximum_capital_loss_constraint() {
+    let logger = create_logger(Info);
+    let input: AllocationInput = create_five_same_candidates(
+        Some(true),
+        Some(CapitalLoss {
+            fraction_of_capital: 0.5,
+            probability_of_loss: 0.05,
+        }),
+        None,
+    );
+
+    // Allocate
+    let portfolio: AllocationResponse = allocate(input, &logger);
+    let tickers_and_fractions: Vec<TickerAndFraction> = portfolio.result.unwrap().allocations;
+
+    // Assert that all the fractions are 0.02 and the probability-weighted return of a worst-case
+    // scenario is 2.5% (0.5*0.05)
+    info!(logger, "{:?}", tickers_and_fractions);
+    tickers_and_fractions
+        .iter()
+        .for_each(|tf| assert_close!(0.02, tf.fraction, ASSERTION_TOLERANCE));
 }
 
 /// Tests allocation for 6 candidate companies without constraints.

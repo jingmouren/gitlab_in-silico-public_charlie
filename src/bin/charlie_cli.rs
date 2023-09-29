@@ -47,7 +47,10 @@ fn allocate_action(logger: &Logger, yaml_file_content: String) {
     );
     let input: AllocationInput = serde_yaml::from_str(&yaml_file_content.to_string()).unwrap();
 
-    info!(logger, "Started calculating optimal portfolio allocation.");
+    info!(
+        logger,
+        "Started calculating optimal portfolio allocation for {:?}.", input
+    );
     let allocation_response = allocate(input, logger);
     if allocation_response.error.is_some() {
         panic!("{}", allocation_response.error.unwrap().message)
