@@ -1,11 +1,5 @@
 ## TODO
 
-Minimum features for public release:
-- [x] Command line interface
-- [x] Update the paper with constraints
-- [ ] Add basic validation tests from paper to integration tests
-- [ ] Break-up the documentation into 4 sections following divio: Tutorials, How-To guides, Explanation, Reference
-
 Improvements:
 - [ ] Add renovate bot
 - [ ] Improve test coverage

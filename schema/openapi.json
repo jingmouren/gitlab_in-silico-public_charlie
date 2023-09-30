@@ -458,6 +458,44 @@
           "analyze"
         ]
       }
+    },
+    "/api": {
+      "get": {
+        "operationId": "openapi",
+        "responses": {
+          "default": {
+            "content": {
+              "*/*": {
+                "schema": {}
+              }
+            },
+            "description": ""
+          }
+        },
+        "summary": "OpenAPI documentation",
+        "tags": [
+          "api"
+        ]
+      }
+    },
+    "/demo": {
+      "get": {
+        "operationId": "demo",
+        "responses": {
+          "default": {
+            "content": {
+              "*/*": {
+                "schema": {}
+              }
+            },
+            "description": ""
+          }
+        },
+        "summary": "Basic front-end for simple demonstration purposes",
+        "tags": [
+          "demo"
+        ]
+      }
     }
   },
   "tags": [
@@ -466,6 +504,12 @@
     },
     {
       "name": "analyze"
+    },
+    {
+      "name": "api"
+    },
+    {
+      "name": "demo"
     }
   ]
 }

@@ -1,5 +1,5 @@
 use charlie::env::{create_logger, get_project_dir};
-use charlie::{allocate_endpoint, analyze_endpoint};
+use charlie::{allocate_endpoint, analyze_endpoint, demo, openapi};
 use dropshot::ApiDescription;
 use serde_json::Value;
 use slog::{info, Level, Logger};
@@ -40,6 +40,8 @@ fn generate_schema(logger: &Logger) -> Value {
     let mut api = ApiDescription::new();
     api.register(allocate_endpoint).unwrap();
     api.register(analyze_endpoint).unwrap();
+    api.register(openapi).unwrap();
+    api.register(demo).unwrap();
 
     info!(logger, "Generating OpenAPI JSON schema.");
     api.openapi("Charlie", "v0")

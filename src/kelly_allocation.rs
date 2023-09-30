@@ -1,6 +1,7 @@
 use bitvec::order::Lsb0;
 use bitvec::slice::BitSlice;
 use bitvec::view::BitView;
+use itertools::Itertools;
 use nalgebra::{DMatrix, DVector};
 use num_traits::pow;
 use num_traits::pow::Pow;
@@ -349,7 +350,7 @@ impl<'a> KellyAllocator<'a> {
                             "Solution is not viable, skipping it. Solution vector: {x}."
                         );
                     } else {
-                        info!(
+                        debug!(
                             self.logger,
                             "This is a viable solution. Adding it to the list of all solutions. \
                             Solution vector: {x}."
@@ -367,15 +368,54 @@ impl<'a> KellyAllocator<'a> {
             }
         });
 
-        // Assume that the best solution is the one with the highest expected value. This is a poor
-        // man's proxy for choosing the best solution. TODO. Improve
+        // Fail if there are no solutions
+        info!(self.logger, "Found {} viable solutions.", solutions.len());
+        if solutions.is_empty() {
+            return Err(Error {
+                code: "did-not-find-a-single-viable-solution".to_string(),
+                message: format!(
+                    "Did not manage to find a single viable numerical solution. \
+                         This may happen for multiple reasons. Check whether the input data would \
+                         suggest a very strong bias towards a single/few investments. Check whether \
+                         the constraints are too strict.\n\
+                         Errors in individual solutions are {}:", all_error_strings
+                ),
+            });
+        }
+
+        // The best solution is considered to be the one that has a highest expected return among
+        // a set of the most diversified solutions. Most diversified solutions are the ones who have
+        // the highest number of non-zero allocations. This is a poor man's proxy of finding the
+        // best solution, which should be done by evaluating the growth function for each solution.
+        // That would be both tricky and fairly expensive. TODO: Improve.
+        info!(self.logger, "Finding a set of most diversified solutions.");
+        let n_non_zero_allocations_for_solution = solutions
+            .iter()
+            .map(|x| {
+                x.iter()
+                    .enumerate()
+                    .filter(|(i, f)| i < &n_companies && f.abs() > SOLVER_TOLERANCE)
+                    .collect_vec()
+                    .len()
+            })
+            .collect_vec();
+
+        let max_n_non_zero_allocations = n_non_zero_allocations_for_solution.iter().max().unwrap();
+        let most_diversified_solutions = solutions
+            .iter()
+            .zip(n_non_zero_allocations_for_solution.iter())
+            .filter(|(_, n_non_zero)| n_non_zero == &max_n_non_zero_allocations)
+            .map(|(x, _)| x)
+            .collect_vec();
         info!(
             self.logger,
-            "Found {} viable solutions: {:?}. Finding the one with maximum expected value.",
-            solutions.len(),
-            solutions
+            "Found {} most diversified solutions with {} non-zero allocation fractions.",
+            most_diversified_solutions.len(),
+            max_n_non_zero_allocations
         );
-        let best_solution = solutions.iter().max_by_key(|x| {
+
+        info!(self.logger, "Looking for a solution with the maximum expected value among the most diversified solutions.");
+        let best_solution = most_diversified_solutions.iter().max_by_key(|x| {
             // Update the portfolio with this solution vector
             let mut p = portfolio.clone();
             p.companies
@@ -383,6 +423,8 @@ impl<'a> KellyAllocator<'a> {
                 .enumerate()
                 .for_each(|(i, pc)| pc.fraction = x[i]);
 
+            // Calculate the worst-case outcome to log it for information purposes
+            worst_case_outcome(&p, self.logger);
             OrderedFloat(expected_return(&p, self.logger))
         });
 
@@ -394,21 +436,10 @@ impl<'a> KellyAllocator<'a> {
                     .enumerate()
                     .for_each(|(i, pc)| pc.fraction = x[i]);
             }
-            None => {
-                return Err(Error {
-                    code: "did-not-find-a-single-viable-solution".to_string(),
-                    message: format!(
-                        "Did not manage to find a single viable numerical solution. \
-                         This may happen for multiple reasons. Check whether the input data would \
-                         suggest a very strong bias towards a single/few investments. Check whether \
-                         the constraints are too strict.\n\
-                         Errors in individual solutions are {}:", all_error_strings
-                    ),
-                });
-            }
+            None => panic!("Did not find a best solution. This should logically only happen if the solutions vector is empty, for which we fail before. If this happens, it's a bug.")
         }
 
-        // Print out some information for the portfolio
+        // Print out some information for the final portfolio
         info!(
             self.logger,
             "Calculating expected value and worst-case outcome for the best solution."
@@ -473,7 +504,6 @@ impl<'a> KellyAllocator<'a> {
                 //    the right-hand-side function value is negative. Hence, two negations make a
                 //    positive sign.
                 // This is a bit confusing, and I'm not sure how to simplify it...
-                // TODO: Explain this in the paper.
 
                 // Constraint contribution is always added to the lower triangular row for this
                 // constraint, regardless whether it's active or inactive
