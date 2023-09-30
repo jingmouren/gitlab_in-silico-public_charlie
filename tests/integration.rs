@@ -1,4 +1,4 @@
-use charlie::env::{create_logger, create_test_logger, get_project_dir};
+use charlie::env::{create_test_logger, get_project_dir};
 use charlie::kelly_allocation::{KellyAllocator, MAX_ITER, SOLVER_TOLERANCE};
 use charlie::model::capital_loss::CapitalLoss;
 use charlie::model::company::Company;
@@ -11,7 +11,6 @@ use charlie::validation::result::{Problem, Severity, ValidationResult};
 use charlie::{allocate, analyze, validate};
 use itertools::Itertools;
 use slog::info;
-use slog::Level::Info;
 
 /// Make assertion tolerance the same as the fraction tolerance (no point in more accuracy).
 const ASSERTION_TOLERANCE: f64 = SOLVER_TOLERANCE;
@@ -302,7 +301,7 @@ fn test_allocate_all_same_with_no_leverage() {
 /// constraint produces a uniform allocation where not all assets are invested.
 #[test]
 fn test_allocate_all_same_with_no_leverage_and_maximum_capital_loss_constraint() {
-    let logger = create_logger(Info);
+    let logger = create_test_logger();
     let input: AllocationInput = create_five_same_candidates(
         Some(true),
         Some(CapitalLoss {
