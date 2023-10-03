@@ -2,6 +2,8 @@
 name = "charlie"
 version = "1.0.0"
 edition = "2021"
+description = "A software for sizing the bets in a focused portfolio."
+license = "MIT"
 
 [lib]
 name = "charlie"
