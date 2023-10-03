@@ -1,9 +1,11 @@
 [package]
 name = "charlie"
-version = "1.0.0"
+version = "1.0.1"
 edition = "2021"
 description = "A software for sizing the bets in a focused portfolio."
 license = "MIT"
+readme = "README.md"
+repository = "https://gitlab.com/in-silico-public/charlie"
 
 [lib]
 name = "charlie"
