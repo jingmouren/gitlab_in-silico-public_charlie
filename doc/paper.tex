@@ -83,8 +83,10 @@ considering:
     \item Multiple constraints for modelling our preference towards no shorting,
     no use of leverage, and providing a maximum value for the risk of permanent
     loss of capital,
-    \item A fundamentals--based analysis (after all, a stock is an ownership
-    share of business~\cite{intelligentInvestor}).
+    \item A fundamentals--based analysis with a very long time horizon. After
+    all, a stock is an ownership share of business~\cite{intelligentInvestor},
+    in which time--scales are significantly larger than the time--scales of
+    day--to--day stock price fluctuations.
 \end{enumerate}
 
 The generalization leads to a non--linear system of equations that when solved,
@@ -97,7 +99,7 @@ safety, are presented.
 \subsection{Disclaimers and Assumptions}
 \label{sec:assumptions}
 
-The underlying philosophy is that one should spend the majority of his time
+The underlying philosophy is that one should spend the majority of their time
 analyzing investments and thinking about intrinsic values under different
 scenarios that might play out, independently of outside thoughts and events.
 However, calculating intrinsic value of a company is more of an art than a
@@ -141,9 +143,11 @@ These are:
     \item No company without at least one downside scenario is allowed. By
     disallowing inputs without downside, the framework forces you to focus and
     think about what can go wrong, as opposed to dreaming about what can go
-    right. However, if one is absolutely (100\%) sure that a company does not
-    have a downside, the solution is to put all the money in that one company.
-    It is our feeling that the best way to handle such cases is outside of this
+    right. This is in--line with thoughts by Prasad~\cite{darwinInvesting} about
+    the importance of avoiding the errors of investing in a bad company.
+    However, if one is absolutely (100\%) sure that a company does not have a
+    downside, the solution is to put all the money in that one company.  It is
+    our feeling that the best way to handle such cases is outside of this
     framework. Alternatively, one can always model an unknown downside scenario
     with a small probability (say 5--20\%) and intrinsic value of zero.
 \end{itemize}
@@ -218,7 +222,7 @@ in the following equation, after some calculus and algebra:
 
 \noindent If one assumes an infinite number of (re)allocations
 $N_a$\footnote{The assumption regarding the infinite number of allocations is
-something that the authors are slightly uncomfortable with, but \textit{feels}
+something that the authors are slightly uncomfortable with, but \textit{feel}
 it is fine because of the margins of safety embedded into the thinking that goes
 into assessing each investment opportunity.}, the following relation holds:
 \begin{equation}
@@ -555,8 +559,9 @@ value and the probability of the scenario happening (or intrinsic value being
 reached at some point in the future). Note that how these numbers are obtained
 is outside of the scope of this work, although it is important to stress that
 the validity and conservative assumptions behind these numbers are probably the
-most important part of an investor's job. The example inputs are presented
-in~\autoref{tab:companyA} to~\autoref{tab:companyE}.
+most important part of an investor's job who is taking a fundamental analysis
+approach. The example inputs are presented in~\autoref{tab:companyA}
+to~\autoref{tab:companyE}.
 
 \begin{table}[!ht]
 \caption{Company A with current market cap of 225B USD.}
@@ -656,10 +661,10 @@ statistics on the portfolio, namely:
 Actuarial Life Tables in~\cite{lifeTables}, the probability of the (currently 34
 year--old, the oldest) author dying within the next year is approximately
 0.26\%\footnote{This is the only thing that's probably worth measuring in the
-basis points.}. That is two orders of magnitude higher than the probability of
-the permanent loss of capital for this portfolio. Considering that the portfolio
-has five stocks, that is a very strong argument against excessive
-diversification, especially if:
+basis points in this framework.}. That is two orders of magnitude higher than
+the probability of the permanent loss of capital for this portfolio. Considering
+that the portfolio has five stocks, that is a very strong argument against
+excessive diversification, especially if:
 \begin{itemize}
     \item One thinks of stocks as ownership shares of businesses, which implies
     long--term thinking and not being bothered by market fluctuations, 
@@ -704,6 +709,9 @@ The authors see the usefulness of this software mainly in:
 \end{itemize}
 
 \section{Access to the Software}
+
+\noindent The software is freely available at TODO. Reader is referred to its
+documentation for instructions on how to install and use the software.
 
 \clearpage
 
