@@ -1,7 +1,7 @@
 # Multi-stage build to keep the final image small
 
 # STAGE 1: BUILDER image
-FROM rust:1.72 as BUILDER
+FROM rust:1.74 as BUILDER
 
 # Create a blank (binary) project
 RUN USER=root cargo new --bin /usr/src/charlie
