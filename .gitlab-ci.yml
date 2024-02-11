@@ -1,5 +1,5 @@
 .rust_image:
-  image: rust:1.72
+  image: rust:1.74
   before_script:
     - rustc --version
     - cargo --version
