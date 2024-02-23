@@ -7,7 +7,7 @@
 \usepackage{authblk}
 
 \title{Sizing the bets in a focused portfolio}
-%\title{Capital allocation for a focused portfolio based on fundamental analysis}
+%\title{Capital Allocation With Kelly Criterion for a Focused Portfolio Based On Fundamental Analysis}
 
 \author[$\dagger$]{Vuko Vuk\v{c}evi\'{c}}
 \author[$\dagger$]{Robert Keser}
@@ -22,100 +22,103 @@
 \section{Summary}
 \label{sec:summary}
 
-The paper attempts to provide a mathematical model and a tool for the focused
+The paper provides a mathematical model and a tool for the focused
 investing strategy as advocated by Buffett~\cite{berkshireLetters},
 Munger~\cite{almanack}, and others from this investment community.
 The approach presented here assumes that the investor's role is to think about
 probabilities of different outcomes for a set of businesses. Based on these
 assumptions, the tool calculates the optimal allocation of capital for
-each of the investment candidates. The model has the option to provide
-constraints that ensure: no shorting, no use of leverage, providing a maximum
-limit to the risk of permanent loss of capital, and maximum individual
-allocation. The software is made available for public use.\\
-
-This paper consist of two parts, one without the mathematics and one with the
-mathematics. For a non--mathematical reader, it is best to skip the two sections
-related to mathematics and numerics, namely~\autoref{sec:mathematics}
-and~\autoref{sec:numerics}. The reader who is interested in mathematics should
-still read the preceding sections since they provide context within which the
-mathematics is built on. Moreover, for mathematically skilled reader, the
-problem formulated and solved here represents a non--linear constrained
-optimization problem.
-
-\section{Motivation}
-\label{sec:motivation}
-
-Before going on to explain the motivation about this work, a bit of context
-might come useful. In silico is an employee--owned engineering consultancy
-company that invests its excess cash into publicly traded stocks. The excess
-cash comes sporadically, and In silico has been a net buyer over the last four
-years. This is a trend that will likely continue. When the excess cash comes in,
-the following question arises: How much money to put in which stocks? That
-question had been answered by looking at our fundamental analysis for each
-company, and performing some vague hand calculations. That of course works well
-because of all the other uncertainties in the investment process, but we were
-still motivated to:
-\begin{enumerate}
-    \item Improve the odds of us behaving rationally (i.e. minimize
-    psychological misjudgments such as anchoring bias~\cite{kahneman},
-    consistency and commitment tendency~\cite{cialdini}, and
-    others with their combined effects~\cite{almanack}),
-    \item Save time (i.e. avoid doing hand calculations).
-\end{enumerate}
-
-Since mathematics is usually good at keeping people rational, and software is
-great for saving time, a decision has been made to write a software that answers
-the following question: For a set of candidate companies and their current
-market capitalization, each having a set of scenarios defined by a probability
-and intrinsic value estimate, how much of our capital to invest in each?
+each of the investment candidates. The model is based on a generalized Kelly
+Criterion with options to provide constraints that ensure: no shorting, limited
+use of leverage, providing a maximum limit to the risk of permanent loss of
+capital, and maximum individual allocation. The software is applied to an
+example portfolio from which certain observations about excessive
+diversification are obtained. In addition, the software is made available for
+public use.\\
 
 \section{Introduction}
 \label{sec:introduction}
 
-The answer to this question has been given by Kelly with his widely known Kelly
-formula (sometimes called Kelly criterion)~\cite{kelly}. The Kelly's approach
-starts by maximizing long--term growth of capital when one is presented with
-an infinite amount of opportunities to bet on. This work extends that idea by
-considering:
+A stock is an ownership share of business~\cite{intelligentInvestor}, in
+which time--scales are significantly greater than the time--scales of
+day--to--day stock price fluctuations. The work therefore assumes a
+fundamentals--based investment analysis with a very long time horizon. There are
+generally two parts of a fundamentals--based investment process:
 \begin{enumerate}
-    \item Multiple companies (stocks) in parallel,
-    \item An arbitrary number of scenarios for each company,
-    \item Multiple constraints for modelling our preference towards no shorting,
-    no use of leverage, and providing a maximum value for the risk of permanent
-    loss of capital,
-    \item A fundamentals--based analysis with a very long time horizon. After
-    all, a stock is an ownership share of business~\cite{intelligentInvestor},
-    in which time--scales are significantly larger than the time--scales of
-    day--to--day stock price fluctuations.
+    \item Finding businesses that are investment candidates,
+    \item Deciding how much capital to allocate in each of them.
+\end{enumerate}
+
+\noindent This work does not deal with the first part related to finding
+relevant investment candidates. It deals only with the second part of the
+process, which can be mathematically well formulated, in an attempt to minimize
+the effects of the psychological misjudgements such as anchoring
+bias~\cite{kahneman}, consistency and commitment tendency~\cite{cialdini}, and
+others with their combined effects~\cite{almanack}). Essentially, the question
+to answer is: For a set of candidate companies and their current market
+capitalization, each having a set of scenarios defined by a probability and
+intrinsic value estimate, how much of capital to invest in each?\\
+
+\indent The answer to this question has been given by Kelly~\cite{kelly} with
+his widely known Kelly Criterion. Despite the fact that the Kelly Criterion has
+been published in 1956 and dealt with information theory and horse racing, its
+use is now widespread in the field of finance, with a plethora of recent
+research. For example, Pinelis and Ruppret~\cite{pinelisRuppert} noted that the
+asset allocation fractions (weights) of the machine--learning powered Maximally
+Predictable Portfolio (MPP) are similar to weighting by the Kelly Criterion.
+Meister~\cite{meister} used the Kelly Criterion to demonstrate the advantage of
+an investor who bets on multiple simultaneous investments compared to an
+investor who bets on a single investment. In the limit of infinite number of
+simultaneous and similar bets, the first investor has all the capital invested
+in a diversified fashion, providing a clear advantage. Byrnes and
+Barnett~\cite{byrnesBarnett} went further to generalize the Kelly Criterion with
+a continuous probability distribution modeling the price movement of the stock,
+while Lototsky and Pollok~\cite{lototskyPollok} rigorously analyzed the
+high--frequency limit of the model, concluding that a high--frequency
+strategy can lead to a more aggressive betting strategy.  Proskurnikov and
+Barmish~\cite{proskurnikovBarmish} investigated the possibility of having a
+non--linear control for the Kelly betting, assuming a bounded set for the
+input probabilities instead of assuming that they are known in advance.  The
+Kelly Criterion was recently even extended to the quantum realm by Meister
+and Price~\cite{meisterPrice}, where in addition to the uncertainty related
+to flipping a coin, there is an uncertainty in measurement. Perhaps the most
+related reference to this work is the paper by Jim\'{e}nez et
+al.~\cite{jimenezEtAl} where they extended the Kelly Criterion to both
+multivariate and simultaneous bets and applied it to sports betting in the
+English Premier League. This work largely follows the approach by
+Jim\'{e}nez et al.~\cite{jimenezEtAl}, but applied to a fundamentals based,
+focused investing with the following characteristics:
+\begin{enumerate}
+    \item Multiple companies (stocks) are considered simultaneously,
+    \item Each with an arbitrary number of scenarios,
+    \item Multiple constraints for modeling authors' preference towards no
+    shorting, limited use of leverage, and providing a maximum value for the
+    risk of permanent loss of capital,
+    \item A fundamentals--based analysis with a very long time horizon, without
+    necessarily knowing when the market price will correspond to the
+    fundamentals.
 \end{enumerate}
 
 The generalization leads to a non--linear system of equations that when solved,
 yields a fraction of capital to invest in each of the candidate companies. The
 mathematical derivation is presented in \autoref{sec:mathematics}, while in the
 next two subsections (\autoref{sec:assumptions} and \autoref{sec:safetyMargin}),
-a discussion on assumptions in a non--mathematical way, and the margin of
-safety, are presented.
+a discussion on assumptions and the margin of safety, are presented.
 
-\subsection{Disclaimers and Assumptions}
+\subsection{Assumptions}
 \label{sec:assumptions}
 
-The underlying philosophy is that one should spend the majority of their time
-analyzing investments and thinking about intrinsic values under different
-scenarios that might play out, independently of outside thoughts and events.
-However, calculating intrinsic value of a company is more of an art than a
-science, especially for a high-quality, growing businesses within one's circle
-of competence. And according to Charlie Munger, Warren Buffett, Mohnish Pabrai
-and the like-minded others from whom the authors got the inspiration for this
-work, one should focus precisely on getting such great businesses for a fair
-price. That means that one shouldn't take what this approach says at face value,
-and one should probably use its guidance infrequently.
+The underlying philosophy with the fundamentals--based focused investing is that
+one should spend the majority of their time analyzing investments and thinking
+about intrinsic values under different scenarios that might play out. However,
+calculating intrinsic value of a company is a process subject to multiple levels
+of uncertainty. Therefore, the reader should always keep in mind that if the
+inputs to the mathematical model are unrealistic, the results will be
+unrealistic as well.
 
 During the mathematical derivation presented in \autoref{sec:mathematics}, an
 assumption is made that the number of bets is very high (tends to infinity).
-This work does not try to justify this assumption in a strong mathematical
-form~\footnote{It is on the author's TODO list to try and prove this.}. Here's a
-soft, non-mathematical reasoning on why the authors think this is fine: The
-assumption is made in order to write the equations in terms of probabilities
+The assumption is made in order to write the equations in terms of probabilities
 instead of the number of outcomes divided by the number of bets. Therefore, as
 long as the input probabilities are \textit{conservatively} estimated, the
 framework should still be valid. This essentially represents the most important
@@ -129,32 +132,29 @@ however a couple of more margins of safety embedded in the current framework.
 These are:
 \begin{itemize}
     \item No shorting allowed. From a purely mathematical point of view,
-    shorting would be allowed. Without detailed math, it is easy to see how a
-    company with a negative expected return would result in a short position.
-    However, due to the asymmetry of the potential losses compared to gains,
-    coupled with the usual time--frame limit that comes with shorting, we
+    shorting would be allowed. Without detailed mathematics, it is easy to see
+    how a company with a negative expected return would result in a short
+    position. However, due to the asymmetry of the potential losses compared to
+    gains, coupled with the usual time--frame limit that comes with shorting, we
     provided a constraint for being long--only.
-    \item No use of leverage allowed. Again, from a purely mathematical point of
-    view, use of leverage would sometimes be useful. The thinking in avoiding to
-    use leverage is that no--one should be in a hurry to get rich, and should
-    avoid risking good night's sleep based on short--term market fluctuations,
-    which are fairly hard to predict consistently (unless you work at
-    Renaissance Technologies, in which case you can scratch this).
+    \item Limited use of leverage. Although leverage is especially useful when
+    dealing with high--conviction ideas, this constraint is introduced to model
+    authors' conservative behavior.
     \item No company without at least one downside scenario is allowed. By
-    disallowing inputs without downside, the framework forces you to focus and
-    think about what can go wrong, as opposed to dreaming about what can go
+    disallowing inputs without downside, the framework forces us to focus and
+    think about what can go wrong, as opposed to focusing on what can go
     right. This is in--line with thoughts by Prasad~\cite{darwinInvesting} about
     the importance of avoiding the errors of investing in a bad company.
     However, if one is absolutely (100\%) sure that a company does not have a
-    downside, the solution is to put all the money in that one company.  It is
-    our feeling that the best way to handle such cases is outside of this
-    framework. Alternatively, one can always model an unknown downside scenario
-    with a small probability (say 5--20\%) and intrinsic value of zero.
+    downside, the solution is to put a significant amount of leveraged capital
+    in that one company. There are two options to handle such cases: i) Either
+    outside of this framework or ii) Modeling an unknown downside scenario with
+    a small probability and intrinsic value of zero.
 \end{itemize}
 
 These assumptions and margins of safety are embedded into the framework as
-constraints in order to try and tie the rational mathematics with the real
-world.
+constraints in order to try and tie the mathematical model and the uncertainty
+around inputs.
 
 \section{Mathematics}
 \label{sec:mathematics}
@@ -222,9 +222,10 @@ in the following equation, after some calculus and algebra:
 
 \noindent If one assumes an infinite number of (re)allocations
 $N_a$\footnote{The assumption regarding the infinite number of allocations is
-something that the authors are slightly uncomfortable with, but \textit{feel}
-it is fine because of the margins of safety embedded into the thinking that goes
-into assessing each investment opportunity.}, the following relation holds:
+somewhat incompatible with a focused investment strategy where a small number of
+stocks are considered at any point in time. This incompatibility is addressed by
+margins of safety presented in~\autoref{sec:safetyMargin}.}, the following
+relation holds:
 \begin{equation}
 \label{eq:7}
     \lim_{N_a \to \infty} \frac{n_i}{N} = p_i
@@ -275,24 +276,22 @@ for deriving the constrained system later on.\\
 margins of safety in a focused investment approach:
 \begin{enumerate}
     \item Long--only constraint ensures that a fraction cannot be negative and
-    is added to all candidate companies. Adding this constraint means: "I do not
-    allow short positions.":
+    is added to all candidate companies. It disallows short positions:
     \begin{equation}
         \label{eq:11}
             f \ge 0 \rightarrow -f + s = 0
         \end{equation}
 
     \item Maximum leverage constraint ensures that the leverage is limited up to
-    $L$. Note that $L = 0$ implies no leverage. Adding this constraint means: "I
-    want to limit the use of leverage (to a minimal amount).":
+    $L$. Note that $L = 0$ implies no leverage:
         \begin{equation}
         \label{eq:12}
             \sum_j^{N_c} f_j \le 1 + L \rightarrow \sum_j^{N_c} f_j - 1 - L + s = 0
         \end{equation}
 
     \item Maximum individual allocation constraint ensures that a fraction does
-    not exceed the specified amount. Adding this constraint means: "I feel
-    uncomfortable putting more than $M$ of my capital into a single company.":
+    not exceed the specified amount. Adding this constraint allows preventing
+    excessive concentration in the portfolio:
         \begin{equation}
         \label{eq:13}
             f \le M \rightarrow f - M + s = 0
@@ -300,9 +299,7 @@ margins of safety in a focused investment approach:
 
     \item Maximum allowable permanent capital loss constraint ensures that the
     worst--case outcome does not exceed losing a specified amount of capital
-    with a specified probability. Adding this constraint means: "Under a
-    worst--case scenario, I am comfortable permanently losing $K$ (e.g. 25\%) of
-    my capital with probability $P$ (e.g. 0.1\%).":
+    with a specified probability:
         \begin{equation}
         \label{eq:14}
             \sum_j^{N_c} f_j \min(p_{ij} k_{ij}) \ge P \cdot K \rightarrow
@@ -312,21 +309,19 @@ margins of safety in a focused investment approach:
     scenarios for the $j$-th candidate company. Here, the minimum returns
     $k_{ij}$ and the maximum worst--case return $K$ are both negative by
     convention, indicating a loss, hence the $\ge$ sign.
+\end{enumerate}
 
 \indent Note that the maximum allowable permanent capital loss constraint
 given by equation~\eqref{eq:14} only works with the long--only constraint
 because the fraction $f_j$ is assumed positive. It is also important to note
-that here we do not talk about {\it temporary} loss of capital due to short-term
+that here we do not refer to a {\it temporary} loss of capital due to short--term
 stock market fluctuations, but rather {\it permanent} loss of capital due to the
 fundamental business environment of candidate companies. In addition, it is of
 course possible for one to lose more than the specified maximum allowable amount
-of capital because of the assumptions made with respect to the inputs: After
-all, coming up with intrinsic values and probabilities for each scenario is more
-of an art than a science.
+of capital because of the assumptions made with respect to the inputs.
 
-\end{enumerate}
 
-\subsection{Constrained System: Putting It All Together}
+\subsection{Constrained System}
 \label{sec:constrainedSystem}
 
 \noindent The growth function~\eqref{eq:4} can be constrained with an arbitrary
@@ -513,8 +508,8 @@ number of non--zero allocations.
 \noindent In order to validate the numerical model, a basic example of five
 candidate companies is considered, where each candidate has the same set of
 scenarios (probabilities and intrinsic values) and the same market cap.
-The inputs that present a 50\% loss and 100\% gain with 50--50 probabilities are
-presented in~\autoref{tab:validationCompany}.\\
+The inputs that represent a 50\% loss and 100\% gain with 50--50 probabilities
+are presented in~\autoref{tab:validationCompany}.\\
 
 \begin{table}[!ht]
 \caption{Company for a validation test with a market cap of 1.}
@@ -563,7 +558,7 @@ most important part of an investor's job who is taking a fundamental analysis
 approach. The example inputs are presented in~\autoref{tab:companyA}
 to~\autoref{tab:companyE}.
 
-\begin{table}[!ht]
+\begin{table}[!b]
 \caption{Company A with current market cap of 225B USD.}
 \vspace{0.25cm}
 \centering
@@ -577,7 +572,7 @@ Bull thesis & 420B USD & 35\% \\
 \label{tab:companyA}%
 \end{table}%
 
-\begin{table}[!ht]
+\begin{table}[!b]
 \caption{Company B with current market cap of 450M USD.}
 \vspace{0.25cm}
 \centering
@@ -591,7 +586,7 @@ Base thesis & 900M USD & 45\% \\
 \label{tab:companyB}%
 \end{table}%
 
-\begin{table}[!ht]
+\begin{table}[!b]
 \caption{Company C with current market cap of 39M GBP.}
 \vspace{0.25cm}
 \centering
@@ -605,7 +600,7 @@ Base thesis & 135M GBP & 50\% \\
 \label{tab:companyC}%
 \end{table}%
 
-\begin{table}[!ht]
+\begin{table}[!b]
 \caption{Company D with current market cap of 751M SGD.}
 \vspace{0.25cm}
 \centering
@@ -618,7 +613,7 @@ Base thesis & 1B SGD & 70\% \\
 \label{tab:companyD}%
 \end{table}%
 
-\begin{table}[!ht]
+\begin{table}[!b]
 \caption{Company E with current market cap of 126B HKD.}
 \vspace{0.25cm}
 \centering
@@ -632,7 +627,7 @@ Base thesis & 300B HKD & 85\% \\
 \label{tab:companyE}%
 \end{table}%
 
-\noindent Based on these inputs, with the long--only strategy, without leverage,
+\indent Based on these inputs, with the long--only strategy, without leverage,
 and with maximum individual allocation of 30\%, the portfolio allocation that
 maximizes the long--term growth--rate of capital is presented
 in~\autoref{tab:results}.
@@ -657,14 +652,10 @@ statistics on the portfolio, namely:
     \item Permanent loss of 60\% of capital with probability of 0.008\%.
 \end{itemize}
 
-\noindent The last item is particularly interesting to the authors. According to
-Actuarial Life Tables in~\cite{lifeTables}, the probability of the (currently 34
-year--old, the oldest) author dying within the next year is approximately
-0.26\%\footnote{This is the only thing that's probably worth measuring in the
-basis points in this framework.}. That is two orders of magnitude higher than
-the probability of the permanent loss of capital for this portfolio. Considering
-that the portfolio has five stocks, that is a very strong argument against
-excessive diversification, especially if:
+\noindent The probability of permanent loss of capital of 0.008\% is
+particularly interesting. Provided that the inputs are reasonably estimated, and
+considering that the portfolio has five stocks, that is a very strong argument
+against excessive diversification, especially if:
 \begin{itemize}
     \item One thinks of stocks as ownership shares of businesses, which implies
     long--term thinking and not being bothered by market fluctuations, 
@@ -673,21 +664,29 @@ excessive diversification, especially if:
     happen.
 \end{itemize}
 
-\noindent The observation about excessive diversification is inline with the
+\noindent The observation about excessive diversification is in--line with the
 thoughts from the Poor Charlie's Almanack~\cite{almanack} and one of the
-lectures from Li Lu that the authors frequently watch~\cite{liLuLecture}.
+lectures from Li Lu~\cite{liLuLecture}. In addition, it seems that recent
+research is also drawing similar conclusions about excessive
+diversification~\cite{jamesMenzies,arvanitisEtAl}, although using different
+investing frameworks. The study by James and Menzies~\cite{jamesMenzies} is
+particularly interesting to the authors since the data suggests that strong
+investors should hold concentrated portfolios, which is in--line with practical
+observations of extremely successful fundamentals--based investors: Warren
+Buffett~\cite{berkshireLetters}, Mohnish Pabrai, Nick Sleep~\cite{nomadLetters},
+Pulak Prasad~\cite{darwinInvesting}, and others.
 
 \section{Problems, Discussion, and Future Work}
 \label{sec:futureWork}
 
-\noindent There are a couple of technical problems that the authors observed:
+\noindent A couple of problems have been observed by the authors:
 \begin{enumerate}
     \item It is possible that a given non--linear system for a particular
     combination of constraint statuses (active/inactive) does not converge. This
     may happen if the resulting matrix is singular, or if the Newton--Raphson
     algorithm does not find the solution within a prescribed number of
     iterations. These errors are ignored, which means that it is possible that
-    the real best solution is not found due to numerical issues.
+    the optimal solution is not found due to numerical issues.
     \item The exponential complexity of the model makes it challenging to
     use for more than several candidate companies without using significant
     compute resources. For example, having a 20 candidate companies with all
@@ -698,14 +697,15 @@ lectures from Li Lu that the authors frequently watch~\cite{liLuLecture}.
     future work.
 \end{enumerate}
 
-\indent To conclude, the authors believe that the most challenging aspect of an
-investor's work that might use this software is to think hard about the inputs.
-The authors see the usefulness of this software mainly in:
+\indent To conclude, we believe that the most challenging aspect of an
+investor's work that might use this software is to appropriately and
+conservatively model the inputs. The authors see the usefulness of this software
+mainly in:
 \begin{itemize}
     \item Forcing the investors to think consistently in terms of probabilities
     and long--term business outcomes across the range of candidate companies,
-    \item Calculating the optimal allocation in a short amount of time, based on
-    the investor's inputs.
+    \item Avoiding psychological biases by having a tool that calculates the
+    optimal allocation of capital based on a strict mathematical formalism.
 \end{itemize}
 
 \section{Access to the Software}
@@ -718,8 +718,8 @@ software.
 
 \clearpage
 
-\bibliographystyle{unsrt}
-\bibliography{./references}
+\bibliographystyle{biolett}
+\bibliography{./../references}
 
 \end{document}
 
