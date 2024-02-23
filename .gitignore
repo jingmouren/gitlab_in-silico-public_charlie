@@ -3,8 +3,8 @@
 .idea
 *.log
 
-/doc/*aux
-/doc/*bbl
-/doc/*blg
-/doc/*log
-/doc/*out
+/doc/*formal/*aux
+/doc/*formal/*bbl
+/doc/*formal/*blg
+/doc/*formal/*log
+/doc/*formal/*out
